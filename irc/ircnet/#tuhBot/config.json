@@ -1,0 +1,8 @@
+{
+  "commandPrefix": "!",
+  "modules": {
+    "test": {
+      "string": "Hello World!"
+    }
+  }
+}
