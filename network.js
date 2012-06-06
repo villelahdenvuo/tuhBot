@@ -15,6 +15,7 @@ function Network() {
   this.loadConfig();
   this.loadChannels();
   this.startClient();
+  this.forwardEvents(); // Let the core know about everything.
 }
 util.inherits(Network, irc.Client);
 
@@ -40,6 +41,23 @@ Network.prototype.startClient = function () {
     channels: this.channels
   });
   this.nick = c.nick;
+};
+
+Network.prototype.forward = function (type, args) {
+  if (!process.send) { return; }
+  process.send({type: type, args: args});
+};
+
+Network.prototype.forwardEvents = function () {
+  var network = this;
+  // Forward all these events to the Core.
+  ['registered', 'names', 'topic', 'join', 'part', 'quit', 'kick', 'kill', 'message#',
+   'notice', 'pm', 'nick', 'invite', '+mode', '-mode', 'whois', 'error']
+  .forEach(function (event) {
+    network.on(event, function forwardEvent() {
+      network.forward(event, arguments);
+    });
+  });
 };
 
 var network = new Network();
@@ -73,8 +91,7 @@ network.on('names', function onNames(channel, nicks) {
 });
 
 network.on('message', function (from, to, message) {
-  console.log(from + ' => ' + to + ': ' + message);
-  process.send({type: 'message', message: message});
+  //network.forward('message', arguments);
 });
 
 network.on('raw', function (msg) {

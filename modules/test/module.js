@@ -3,6 +3,7 @@ function Test(io, config) {
   this.config = config;
   io.command('test', this, this.test, this.testFormatter);
   io.route(/:\)/, this, this.smiley, this.smileyFormatter);
+  io.on('+mode', this, this.addMode, this.addModeFormatter);
 }
 
 Test.prototype.test = function (info, cb) {
@@ -19,6 +20,14 @@ Test.prototype.smiley = function (info, cb) {
 
 Test.prototype.smileyFormatter = function (i) {
   return "Found a smiley in message: " + i.message;
+};
+
+Test.prototype.addMode = function (args, cb) {
+  cb({who: args[1], what: args[2], to: args[3]});
+};
+
+Test.prototype.addModeFormatter = function (i) {
+  return i.who + " gave +" + i.what + " to " + i.to + "."; 
 };
 
 module.exports = Test;

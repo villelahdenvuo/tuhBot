@@ -7,7 +7,8 @@ var argv = require('optimist')
     .argv;
 
 var fs = require('fs')
-  , cp = require('child_process');
+  , cp = require('child_process')
+  , colors = require('colors');
 
 function Core() {
   this.networks = {};
@@ -31,12 +32,12 @@ Core.prototype.initNetwork = function (id) {
 Core.prototype.networkMessage = function (network, msg) {
   switch (msg.type) {
     case 'message':
-      console.log('Command received from %s', network);
-      console.dir(msg);
+      //console.log('Message received from %s', network.green);
+      //console.dir(msg);
       break;
     default:
-      console.log('Received an unknown message from %s', network);
-      console.dir(msg);
+      //console.log('Received an unknown message from %s', network.green);
+      //console.dir(msg);
   }
 };
 

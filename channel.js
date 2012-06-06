@@ -8,7 +8,7 @@ function Channel(network, name) {
   this.routes = [];
   this.modules = {};
   this.overrides = {};
-  
+
   this.loadConfig();
   this.loadOverrides();
   this.initModules();
@@ -31,39 +31,60 @@ Channel.prototype.initModules = function () {
   }, this);
 };
 
+Channel.prototype.exposeIO = function () {
+  var chan = this;
+  return { // Only allow some IO with Channel for modules.
+    command: function () { chan.registerCommand.apply(chan, arguments); },
+      route: function () { chan.registerRoute.apply(chan, arguments); },
+         on: function () { chan.registerEvent.apply(chan, arguments); }
+  };
+};
+
 Channel.prototype.initModule = function (module, config) {
   console.log('Loading module', module.green, config);
   if (this.overrides[module]) {
-    this.modules[module] = new this.overrides[module](this, config);
+    this.modules[module] = new this.overrides[module](this.exposeIO(), config);
   } else {
     this.modules[module] =
-      new (require(__dirname + '/modules/' + module + '/module'))(this, config);
+      new (require(__dirname + '/modules/' + module + '/module'))(this.exposeIO(), config);
   }
 };
 
 Channel.prototype.handleMessage = function (from, message) {
-  var chan = this;
-  this.routes.forEach(function (route) {
-    if (!route.route.test(message)) { return };
-    route.handler.call(route.module, {from: from, message: message}, function (out) {
-      chan.say(route.formatter(out));
+  var chan = this, routes = this.routes;
+
+  for (var i in routes) { var r = this.routes[i];
+    if (routes.hasOwnProperty(r) || !r.route.test(message)) { continue; };
+    // It's a match. Execute module handler and output message if needed.
+    r.handler.call(r.module, {from: from, message: message}, function (out) {
+      chan.network.say(chan.name, r.formatter(out));
     });
-  }, this);
+    break; // Only one execution per message. Module that registered it's handler first wins.
+  }
 };
 
-Channel.prototype.route = function (route, module, handler, formatter) {
+Channel.prototype.registerRoute = function (route, module, handler, formatter) {
   this.routes.push({route: route, module: module, handler: handler, formatter: formatter});
 };
 
-Channel.prototype.command = function (command, module, handler, formatter) {
+// A shorthand for routes for commands.
+Channel.prototype.registerCommand = function (command, module, handler, formatter) {
   this.routes.push({
-    route: new RegExp('^' + this.config.commandPrefix + command, 'i'),
+    route: new RegExp('^' + this.config.commandPrefix + command + '($| )', 'i'),
     module: module, handler: handler, formatter: formatter
   });
 };
 
-Channel.prototype.say = function (msg) {
-  this.network.say(this.name, msg);
+Channel.prototype.registerEvent = function (event, module, handler, formatter) {
+  var chan = this, whitelist = ['join', 'part', '+mode', '-mode']; // Only allow certain events to be binded to.
+  if (whitelist.indexOf(event) == -1) {
+    console.log('Module tried to bind unsafe event:', event); return;
+  }
+  this.network.on(event, function () {
+    handler.call(module, arguments, function (out) {
+      chan.network.say(chan.name, formatter(out));
+    });
+  });
 };
 
 module.exports = Channel;

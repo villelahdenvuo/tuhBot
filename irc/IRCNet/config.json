@@ -1,0 +1,8 @@
+{
+  "nick": "tuhBot2",
+  "userName": "tuhoojabotti",
+  "realName": "a Node.js IRC-bot by tuhoojabotti",
+  "floodProtection": true,
+  "autoRejoin": false,
+  "address": "irc.cc.tut.fi"
+}
