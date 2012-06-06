@@ -1,7 +1,7 @@
 
 var handlers = {
   //** TWITTER **//
-  'https?://twitter.com/(.+?)/status(es)?/(.+?)($| )':
+  'https?://twitter.com/\\w+/status(es)?/(\\d+)':
   require('./twitter'),
   //** YOUTUBE **//
   '(?:youtube(?:-nocookie)?\.com/(?:[^/]+/.+/|(?:v|e(?:mbed)?)/|.*[?&]v=)|youtu\.be/)([^"&?/ ]{11})':

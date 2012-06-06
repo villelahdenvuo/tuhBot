@@ -4,7 +4,7 @@ var request = require('request')
 
 function handler(results, cb) {
   if (!results) { return; }
-  var id = results[3];
+  var id = results[2];
 
   request('http://api.twitter.com/1/statuses/show/' + id + '.json', function (err, res, body) {
     if (err || res.statusCode != 200) { return; }
