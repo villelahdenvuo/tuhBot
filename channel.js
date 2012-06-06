@@ -57,7 +57,7 @@ Channel.prototype.handleMessage = function (from, message) {
     if (routes.hasOwnProperty(r) || !r.route.test(message)) { continue; };
     // It's a match. Execute module handler and output message if needed.
     r.handler.call(r.module, {from: from, message: message}, function (out) {
-      chan.network.say(chan.name, r.formatter(out));
+      chan.say(r.formatter(out));
     });
     break; // Only one execution per message. Module that registered it's handler first wins.
   }
@@ -85,6 +85,11 @@ Channel.prototype.registerEvent = function (event, module, handler, formatter) {
       chan.network.say(chan.name, formatter(out));
     });
   });
+};
+
+Channel.prototype.say = function (msg) {
+  this.network.say(this.name, this.config.colors ?
+    msg : msg.replace(/[\x02\x1f\x16\x0f]|\x03\d{0,2}(?:,\d{0,2})?/g, ''));
 };
 
 module.exports = Channel;

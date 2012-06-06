@@ -1,5 +1,6 @@
 var request = require('request')
-  , format = require('util').format;
+  , format = require('util').format
+  , c = require('irc').colors.wrap;
 
 function handler(results, cb) {
   if (!results) { return; }
@@ -15,19 +16,22 @@ function handler(results, cb) {
 
 function formatter(i) {
   var duration, dur = secondsToTime(i.duration)
-    , rating, rat = Math.round(i.rating);
+    , rating, rat = Math.round(i.rating)
+    , nsfw = i.contentRating ? ' - ' + c('light_red', 'NSFW') : ''
+    // Add spaces between thousands to enhance reading experience.
+    , viewCount = String(i.viewCount).replace(/(\d)(?=(\d{3})+$)/g, '$1 ');
 
   // Format rating into stars.
-  rating = new Array(rat + 1).join('*')
-         + new Array(5 - rat + 1).join(' ');
+  rating = c('yellow', new Array(rat + 1).join('*')
+         + new Array(5 - rat + 1).join(' '));
   
   // Format duration into hms format.
   duration = (dur.h ? dur.h + 'h' : '')
            + (dur.m ? dur.m + 'm' : '')
            + (dur.s ? dur.s + 's' : '');
 
-  return format('Video: %s by %s [%s - [%s] - %d views]',
-    i.title, i.uploader, duration, rating, i.viewCount);
+  return format('Video: %s by %s [%s - [%s] - %s views%s]',
+    i.title, c('gray', i.uploader), duration, rating, viewCount, nsfw);
 }
 
 function secondsToTime(secs) {

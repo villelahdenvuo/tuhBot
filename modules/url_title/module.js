@@ -1,34 +1,12 @@
-var request = require('request')
-  , format = require('util').format;
 
-var handlers = (function () {
-  var h = {};
-
+var handlers = {
   //** TWITTER **//
-  h['https?://twitter.com/(.+?)/status(es)?/(.+?)($| )'] = {
-    handler: function (results, cb) {
-      if (!results) { return; }
-      var id = results[3];
-
-      request('http://api.twitter.com/1/statuses/show/' + id + '.json', function (err, res, body) {
-        if (err || res.statusCode != 200) { return; }
-        var data = JSON.parse(body);
-        cb({
-          text: data['text'],
-          user: data['user']['screen_name'],
-          name: data['user']['name']
-        });
-      });
-    },
-    formatter: function (i) { return format('Tweet by %s (@%s): %s', i.name, i.user, i.text); }
-  }
-
+  'https?://twitter.com/(.+?)/status(es)?/(.+?)($| )':
+  require('./twitter'),
   //** YOUTUBE **//
-  h['(?:youtube(?:-nocookie)?\.com/(?:[^/]+/.+/|(?:v|e(?:mbed)?)/'
-  + '|.*[?&]v=)|youtu\.be/)([^"&?/ ]{11})'] = require('./youtube');
-
-  return h;
-}) ();
+  '(?:youtube(?:-nocookie)?\.com/(?:[^/]+/.+/|(?:v|e(?:mbed)?)/|.*[?&]v=)|youtu\.be/)([^"&?/ ]{11})':
+  require('./youtube')
+};
 
 function URLTitle(io, config) {
   this.io = io;
@@ -37,12 +15,11 @@ function URLTitle(io, config) {
 }
 
 URLTitle.prototype.setupHandler = function (regexp) {
-  var title = handlers[regexp];
+  var title = handlers[regexp], config = this.config;
 
   // Add route to channel.
   this.io.route( new RegExp(regexp, 'gi'), this, function (info, cb) {
-    var results = new RegExp(regexp).exec(info.message);
-    title.handler(results, cb);
+    title.handler(new RegExp(regexp).exec(info.message), cb);
   }, title.formatter);
 };
 
