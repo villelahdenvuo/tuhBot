@@ -1,0 +1,10 @@
+{
+  "commandPrefix": "!",
+  "colors": true,
+  "modules": {
+    "test": {
+      "string": "Hello World!"
+    },
+    "url_title": {}
+  }
+}
