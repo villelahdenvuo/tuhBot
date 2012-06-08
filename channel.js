@@ -1,26 +1,33 @@
+'use strict';
+
 var fs = require('fs')
-  , path = require('path');
+  , path = require('path')
+  , colors = require('colors');
 
 function Channel(network, name) {
+  this.path = process.cwd() + '/' + name + '/';
   this.network = network;
   this.name = name;
   this.config = {};
+  // "filters" for messages
+  this.commands = [];
   this.routes = [];
+  // modules and their overrides
   this.modules = {};
   this.overrides = {};
-
+  // Init ALL THE THINGS.
   this.loadConfig();
   this.loadOverrides();
   this.initModules();
 }
 
 Channel.prototype.loadConfig = function () {
-  this.config = JSON.parse(fs.readFileSync(process.cwd() + '/' + this.name + '/config.json'));
+  this.config = JSON.parse(fs.readFileSync(this.path + 'config.json'));
 };
 
 Channel.prototype.loadOverrides = function () {
-  if (path.existsSync(process.cwd() + '/' + this.name + '/customize.js')) {
-    this.overrides = require(process.cwd() + '/' + this.name + '/customize');
+  if (path.existsSync(this.path + 'customize.js')) {
+    this.overrides = require(this.path + 'customize');
   }
 };
 
@@ -51,16 +58,27 @@ Channel.prototype.initModule = function (module, config) {
 };
 
 Channel.prototype.handleMessage = function (from, message) {
-  var chan = this, routes = this.routes;
+  var chan = this, commands = this.commands, routes = this.routes;
 
-  for (var i in routes) { var r = this.routes[i];
-    if (routes.hasOwnProperty(r) || !r.route.test(message)) { continue; };
-    // It's a match. Execute module handler and output message if needed.
+  function handleRoute(r) {
     r.handler.call(r.module, {from: from, message: message}, function (out) {
-      chan.say(r.formatter(out));
+      try { chan.say(r.formatter(out)); }
+      catch (err) {
+        console.error('%s Module %s formatter failed!', 'ERROR'.red, r.module);
+        console.log(err.stack);
+      }
     });
-    break; // Only one execution per message. Module that registered it's handler first wins.
   }
+
+  // Search for commands.
+  for (var i in commands) { var r = commands[i];
+    if (r.route.test(message)) { handleRoute(r); return; };
+  }
+
+  // It was not a command, let's see if we have routes for it.
+  routes.forEach(function (r) {
+    if (r.route.test(message)) { handleRoute(r); };
+  });
 };
 
 Channel.prototype.registerRoute = function (route, module, handler, formatter) {
@@ -69,14 +87,15 @@ Channel.prototype.registerRoute = function (route, module, handler, formatter) {
 
 // A shorthand for routes for commands.
 Channel.prototype.registerCommand = function (command, module, handler, formatter) {
-  this.routes.push({
+  this.commands.push({
     route: new RegExp('^' + this.config.commandPrefix + command + '($| )', 'i'),
     module: module, handler: handler, formatter: formatter
   });
 };
 
 Channel.prototype.registerEvent = function (event, module, handler, formatter) {
-  var chan = this, whitelist = ['join', 'part', '+mode', '-mode']; // Only allow certain events to be binded to.
+  // Only allow certain events to be binded to.
+  var chan = this, whitelist = ['join', 'part', '+mode', '-mode'];
   if (whitelist.indexOf(event) == -1) {
     console.log('Module tried to bind unsafe event:', event); return;
   }

@@ -1,3 +1,5 @@
+'use strict';
+
 var colors = require('colors')
   , util = require('util')
   , irc = require('irc')
@@ -59,6 +61,11 @@ Network.prototype.forwardEvents = function () {
     });
   });
 };
+
+process.on('uncaughtException', function (err) {
+  console.error('%s Network (%s) catched error at the last minute!', 'ERROR'.red, process.argv[2]);
+  console.log(err.stack);
+});
 
 var network = new Network();
 

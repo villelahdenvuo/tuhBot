@@ -1,0 +1,7 @@
+{
+  "commandPrefix": "!",
+  "colors": true,
+  "modules": {
+    "die": {}
+  }
+}
