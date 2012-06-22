@@ -1,32 +1,48 @@
 'use strict';
 
-var fs = require('fs')
-  , path = require('path')
-  , colors = require('colors');
+var colors = require('colors')
+  , fs = require('fs');
 
 function Channel(network, name) {
   this.path = process.cwd() + '/' + name + '/';
+  this.modulePath = __dirname + '/modules/';
   this.network = network;
   this.name = name;
   this.config = {};
+  this.operators = [];
   // "filters" for messages
   this.commands = [];
   this.routes = [];
   // modules and their overrides
   this.modules = {};
   this.overrides = {};
+}
+
+Channel.prototype.init = function () {
   // Init ALL THE THINGS.
   this.loadConfig();
   this.loadOverrides();
   this.initModules();
-}
+
+  if (this.config.operators) {
+    this.operators = this.config.operators.map(function (op) {
+      return new RegExp(op.replace(/[-[\]{}()+?.,\\^$|#\s]/g, "\\$&").replace(/\*/g, '(.+?)'));
+    });
+  }
+};
 
 Channel.prototype.loadConfig = function () {
-  this.config = JSON.parse(fs.readFileSync(this.path + 'config.json'));
+  try {
+    this.config = JSON.parse(fs.readFileSync(this.path + 'config.json'));
+  } catch(e) {
+    console.log(this.name.green, 'config file could not be loaded!');
+    console.log(e.stack);
+    process.exit();
+  }
 };
 
 Channel.prototype.loadOverrides = function () {
-  if (path.existsSync(this.path + 'customize.js')) {
+  if (fs.existsSync(this.path + 'customize.js')) {
     this.overrides = require(this.path + 'customize');
   }
 };
@@ -41,27 +57,28 @@ Channel.prototype.initModules = function () {
 Channel.prototype.exposeIO = function () {
   var chan = this;
   return { // Only allow some IO with Channel for modules.
-    command: function () { chan.registerCommand.apply(chan, arguments); },
-      route: function () { chan.registerRoute.apply(chan, arguments); },
-         on: function () { chan.registerEvent.apply(chan, arguments); }
+    opCommand: function () { chan.registerOpCommand.apply(chan, arguments); },
+      command: function () { chan.registerCommand.apply(chan, arguments); },
+        route: function () { chan.registerRoute.apply(chan, arguments); },
+           on: function () { chan.registerEvent.apply(chan, arguments); }
   };
 };
 
 Channel.prototype.initModule = function (module, config) {
-  console.log('Loading module', module.green, config);
+  console.log(this.name.green, 'Loading module', module.green, config);
   if (this.overrides[module]) {
     this.modules[module] = new this.overrides[module](this.exposeIO(), config);
   } else {
     this.modules[module] =
-      new (require(__dirname + '/modules/' + module + '/module'))(this.exposeIO(), config);
+      new (require(this.modulePath + module + '/module'))(this.exposeIO(), config);
   }
 };
 
-Channel.prototype.handleMessage = function (from, message) {
+Channel.prototype.handleMessage = function (from, message, raw) {
   var chan = this, commands = this.commands, routes = this.routes;
 
   function handleRoute(r) {
-    r.handler.call(r.module, {from: from, message: message}, function (out) {
+    r.handler.call(r.module, {from: from, message: message, hostmask: raw.prefix}, function (out) {
       try { chan.say(r.formatter(out)); }
       catch (err) {
         console.error('%s Module %s formatter failed!', 'ERROR'.red, r.module);
@@ -85,11 +102,39 @@ Channel.prototype.registerRoute = function (route, module, handler, formatter) {
   this.routes.push({route: route, module: module, handler: handler, formatter: formatter});
 };
 
+Channel.prototype.isOperator = function (hostmask) {
+  for (var i in this.operators) {
+    if (this.operators[i].test(hostmask)) {
+      //console.log(hostmask.green, 'is op!');
+      return true;
+    }
+  }
+  //console.log(hostmask.red, 'is NOT op!');
+  return false;
+};
+
 // A shorthand for routes for commands.
 Channel.prototype.registerCommand = function (command, module, handler, formatter) {
   this.commands.push({
     route: new RegExp('^' + this.config.commandPrefix + command + '($| )', 'i'),
     module: module, handler: handler, formatter: formatter
+  });
+};
+
+Channel.prototype.registerOpCommand = function (command, module, handler, formatter) {
+  var chan = this;
+  function checkOp(info, cb) {
+    if (chan.isOperator(info.hostmask)) {
+      console.log('Operator', info.from.green, 'called', command.green);
+      handler(info, cb);
+    } else {
+      console.log('Non-Operator', info.from.red, 'tried to call', command.red);
+    }
+  }
+
+  this.commands.push({
+    route: new RegExp('^' + this.config.commandPrefix + command + '($| )', 'i'),
+    module: module, handler: checkOp, formatter: formatter
   });
 };
 

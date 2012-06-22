@@ -4,7 +4,7 @@ var argv = require('optimist')
     .default({d: false})
     .alias({'d': 'debug', 'h': 'help'})
     .describe({'d': 'Spam a lot.'})
-    .usage('Run tuhBot: $0')
+    .usage('Run bot: $0')
     .check(function (a) { return !a.h; })
     .argv;
 
@@ -39,22 +39,31 @@ Core.prototype.initNetwork = function (id) {
 
 Core.prototype.networkMessage = function (network, msg) {
   var ircEvents = ['registered', 'names', 'topic', 'join', 'part', 'quit', 'kick', 'kill',
-    'notice', 'pm', 'nick', 'invite', '+mode', '-mode', 'whois', 'error'], a;
+    'notice', 'pm', 'nick', 'invite', '+mode', '-mode', 'whois'], a;
 
   // Forward the event to our special CoreChannel
   if (ircEvents.indexOf(msg.type) != -1) {
     a = _.values(msg.args);
     a.unshift(msg.type, network);  // We have to know what network we got the event from.
-    console.log(a);
+    //console.log(a);
     this.emit.apply(this, a);
   }
 
   if (msg.type == 'message' || msg.type == 'message#') {
-    console.log(msg);
-    this.channel.handleMessage.call(this.channel, network, msg.args[0], msg.args[2]);
+    this.channel.handleMessage.call(this.channel, network, msg.args[0], msg.args[2], msg.args[3]);
   }
 
 };
+
+Core.prototype.kill = function (signal) {
+  //_.each(this.networks, function (child, net) {
+    //console.log('Telling %s to disconnect...', net);
+    //child.kill(signal);
+    //child.send({type: 'command', action: 'disconnect'});
+  //});
+  //console.log("I'm out!");
+  //process.exit(signal);
+}
 
 Core.prototype.say = function (net, to, msg) {
   // Tell network to send a message
@@ -63,26 +72,18 @@ Core.prototype.say = function (net, to, msg) {
 
 function CoreChannel(core) {
   Channel.call(this, core, 'core');
+  this.modulePath = __dirname + '/core/modules/';
+  this.init();
 }
 util.inherits(CoreChannel, Channel);
 
 // Overwrite methods using network, because we don't know the network.
 
-Channel.prototype.initModule = function (module, config) {
-  console.log('Loading core module', module.green, config);
-  if (this.overrides[module]) {
-    this.modules[module] = new this.overrides[module](this.exposeIO(), config);
-  } else {
-    this.modules[module] =
-      new (require(__dirname + '/core/modules/' + module + '/module'))(this.exposeIO(), config);
-  }
-};
-
 CoreChannel.prototype.registerEvent = function (event, module, handler, formatter) {
   // Only allow certain events to be binded to.
   var chan = this, whitelist = ['join', 'part', '+mode', '-mode'];
-  if (whitelist.indexOf(event) == -1) {
-    console.log('Module tried to bind unsafe event:', event); return;
+  if (whitelist.indexOf(event) === -1) {
+    console.log(module, 'tried to bind unsafe event:', event); return;
   }
   this.network.on(event, function () {
     var args = Array.prototype.slice.call(arguments)
@@ -99,11 +100,11 @@ CoreChannel.prototype.registerEvent = function (event, module, handler, formatte
   });
 };
 
-CoreChannel.prototype.handleMessage = function (network, from, message) {
+CoreChannel.prototype.handleMessage = function (network, from, message, raw) {
   var chan = this, commands = this.commands, routes = this.routes;
 
   function handleRoute(r) {
-    r.handler.call(r.module, {from: from, message: message}, function (out) {
+    r.handler.call(r.module, {from: from, message: message, hostmask: raw.prefix}, function (out) {
       try { chan.network.say(net, from, r.formatter(out)); }
       catch (err) {
         console.error('%s Module %s formatter failed!', 'ERROR'.red, r.module);
@@ -112,7 +113,7 @@ CoreChannel.prototype.handleMessage = function (network, from, message) {
     });
   }
 
-  console.log('CORE MESSAGE', network, from, message, commands);
+  //console.log('CORE MESSAGE', network, from, message, commands);
 
   // Search for commands.
   for (var i in commands) { var r = commands[i];
@@ -132,3 +133,12 @@ process.on('uncaughtException', function (err) {
 
 // Create a new bot.
 var bot = new Core();
+
+process.stdin.resume();
+process.on('SIGINT', function () {
+  console.log('Core received SIGINT');
+  // Wait for child processes to die cleanly (or something).
+  setTimeout(function () { process.exit(); }, 1000);
+});
+
+

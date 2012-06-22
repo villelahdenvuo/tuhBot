@@ -1,7 +1,8 @@
 {
-  "commandPrefix": "!",
+  "operators": ["tuhoojabotti!*@irkin.tuhoojabotti.com"],
+  "commandPrefix": "¤",
   "colors": true,
   "modules": {
-    "die": {}
+    "control": {}
   }
 }

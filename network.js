@@ -1,25 +1,29 @@
 'use strict';
 
 var colors = require('colors')
+  , async = require('async')
   , util = require('util')
-  , irc = require('irc')
+  , irc = require('irc').Client
   , fs = require('fs')
-  , _ = require('underscore')
-  , Channel = require('./channel');
+  , _ = require('underscore');
+
+var Channel = require('./channel');
 
 
-function Network() {
-  // An object for storing current channels
-  this.channels = {};
+function Network(name) {
+  this.channelHandles = {};
   this.config = {};
-  
-  console.log('Starting up network', process.argv[2].green);
+  this.name = name;
+
+  console.log('%s process starting up...', name.green);
   this.loadConfig();
   this.loadChannels();
+  this.bindEvents();
   this.startClient();
-  this.forwardEvents(); // Let the core know about everything.
+  this.listenMaster();
+  this.forwardEvents();
 }
-util.inherits(Network, irc.Client);
+util.inherits(Network, irc);
 
 Network.prototype.loadConfig = function () {
   this.config = JSON.parse(fs.readFileSync(process.cwd() + '/config.json'));
@@ -35,7 +39,7 @@ Network.prototype.loadChannels = function () {
 Network.prototype.startClient = function () {
   var c = this.config;
   // Create an irc client
-  irc.Client.call(this, c.address, c.nick, {
+  irc.call(this, c.address, c.nick, {
     userName: c.userName,
     realName: c.realName,
     floodProtection: c.floodProtection,
@@ -45,20 +49,64 @@ Network.prototype.startClient = function () {
   this.nick = c.nick;
 };
 
-Network.prototype.forward = function (type, args) {
-  if (!process.send) { return; }
-  process.send({type: type, args: args});
+Network.prototype.bindEvents = function () {
+  function onRegistered() {
+    console.log('%s connected to server. :O)', this.name.green);
+  }
+
+  function onJoin(ch, nick, msg) {
+    if (nick == this.nick) {
+      console.log('%s joined channel %s.', this.name.green, ch.green);
+      this.initChannel(ch);
+    } else {
+      console.log('User %s joined channel %s.', nick.green, ch.green);
+    }
+  }
+
+  function onNames(ch, nicks) {
+    console.log('%s names (%s): %s',
+      this.name.green, ch.green, Object.keys(nicks).join(', '.magenta));
+  }
+
+  this.on('registered', onRegistered);
+  this.on('join', onJoin);
+  this.on('names', onNames);
 };
 
 Network.prototype.forwardEvents = function () {
   var network = this;
+
   // Forward all these events to the Core.
   ['registered', 'names', 'topic', 'join', 'part', 'quit', 'kick', 'kill', 'message#',
    'notice', 'pm', 'nick', 'invite', '+mode', '-mode', 'whois', 'error']
   .forEach(function (event) {
     network.on(event, function forwardEvent() {
-      network.forward(event, arguments);
+      if (process.send) { process.send({type: event, args: arguments}); }
     });
+  });
+};
+
+Network.prototype.listenMaster = function (msg) {
+  function onMessage(msg) {
+    console.log('Got message from core', msg);
+
+    /*if (msg.type == 'command') {
+      switch (msg.action) {
+        case 'disconnect':
+          console.log('%s going down.', this.name);
+          //this.disconnect('Killed by core.');
+      }
+    }*/
+  }
+  process.on('message', onMessage);
+}
+
+Network.prototype.initChannel = function (name) {
+  var channel = this.channelHandles[name] = new Channel(this, name);
+  channel.init();
+
+  this.on('message' + name, function (from, message, raw) {
+    channel.handleMessage.call(channel, from, message, raw);
   });
 };
 
@@ -67,40 +115,16 @@ process.on('uncaughtException', function (err) {
   console.log(err.stack);
 });
 
-var network = new Network();
+var network = new Network(process.argv[2]);
 
+process.stdin.resume();
+process.on('SIGINT', function () {
+  console.log('%s received SIGINT', network.name.green);
 
-network.on('registered', function onConnect(msg) {
-  console.log('Connected to server. :O)');
+  network.disconnect('SIGINT', function () {
+    console.log('We have now quit from', network.name.green);
+    process.exit();
+  });
 });
 
-network.on('join', function onJoin(ch, nick, msg) {
-  if (nick == this.nick) {
-    console.log('I joined channel %s.', ch.green);
-    var channel = this.channels[ch] = new Channel(this, ch);
-    this.on('message' + ch, function (from, message) {
-      channel.handleMessage.call(channel, from, message);
-    });
-  } else {
-    console.log('User %s joined channel %s.', nick.green, ch.green);
-  }
-});
 
-network.on('kill', function (nick, reason, chs, msg) {
-  if (nick === network.nick) {
-    log.error('I was killed! :O');
-  }
-});
-
-network.on('names', function onNames(channel, nicks) {
-  console.log('Names (%s) [%s]', channel.green, Object.keys(nicks).join(', '.magenta));
-  //network.channels[channel] = new Channel(network, channel, nicks);
-});
-
-network.on('message', function (from, to, message) {
-  //network.forward('message', arguments);
-});
-
-network.on('raw', function (msg) {
-  //console.log(msg.command);
-});
