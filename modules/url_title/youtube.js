@@ -23,7 +23,7 @@ function formatter(i) {
 
   // Format rating into stars.
   rating = c('yellow', new Array(rat + 1).join('*')
-         + new Array(5 - rat + 1).join(''));
+         + new Array(5 - rat + 1).join(' '));
 
   // Format duration into hms format.
   duration = (dur.h ? dur.h + 'h' : '')

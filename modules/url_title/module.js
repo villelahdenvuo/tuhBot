@@ -2,11 +2,14 @@
 
 var handlers = {
   //** TWITTER **//
-  'https?://twitter.com/\\w+/status(es)?/(\\d+)':
+  'twitter\.com/\\w+/status(es)?/(\\d+)':
   require('./twitter'),
   //** YOUTUBE **//
   '(?:youtube(?:-nocookie)?\.com/(?:[^/]+/.+/|(?:v|e(?:mbed)?)/|.*[?&]v=)|youtu\.be/)([^"&?/ ]{11})':
-  require('./youtube')
+  require('./youtube'),
+  //** REDDIT **//
+  '(reddit\.com/r/\\w+/comments|redd\.it)/(\\w+)':
+  require('./reddit')
 };
 
 function URLTitle(io, config) {
@@ -21,11 +24,11 @@ URLTitle.prototype.toString = function () {
 };
 
 URLTitle.prototype.setupHandler = function (regexp) {
-  var title = handlers[regexp], config = this.config;
+  var title = handlers[regexp], config = this.config, re = new RegExp(regexp, 'gi');
 
   // Add route to channel.
-  this.io.route( new RegExp(regexp, 'gi'), this, function (info, cb) {
-    title.handler(new RegExp(regexp).exec(info.message), cb);
+  this.io.route(re, this, function (info, cb) {
+    title.handler(info.message.match(new RegExp(regexp)), cb); // FIXME: Closure problem.
   }, title.formatter);
 };
 

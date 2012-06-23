@@ -89,12 +89,12 @@ Channel.prototype.handleMessage = function (from, message, raw) {
 
   // Search for commands.
   for (var i in commands) { var r = commands[i];
-    if (r.route.test(message)) { handleRoute(r); return; };
+    if (message.match(r.route)) { handleRoute(r); return; };
   }
 
   // It was not a command, let's see if we have routes for it.
   routes.forEach(function (r) {
-    if (r.route.test(message)) { handleRoute(r); };
+    if (message.match(r.route)) { console.log('Match', r.route); handleRoute(r); };
   });
 };
 

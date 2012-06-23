@@ -4,23 +4,24 @@ var request = require('request')
 
 function handler(results, cb) {
   if (!results) { return; }
-  var id = results[2];
-
-  request('http://api.twitter.com/1/statuses/show/' + id + '.json', function (err, res, body) {
-    if (err || res.statusCode != 200) { return; }
-    var data = JSON.parse(body);
-    cb({
-      text: data['text'],
-      user: data['user']['screen_name'],
-      name: data['user']['name']
-    });
-  });
+  
+  request('http://api.twitter.com/1/statuses/show/' + results[2] + '.json',
+    function (err, res, body) {
+      if (err || res.statusCode != 200) { return; }
+      var data = JSON.parse(body);
+      cb({
+        text: data['text'],
+        user: data['user']['screen_name'],
+        name: data['user']['name']
+      });
+    }
+  );
 }
 
 function formatter(i) {
-  return format('Tweet by %s (%s): %s', i.name, c('light_green', '@' + i.user), i.text);
+  return format('%s %s (%s): %s',
+    c('yellow', '└→'), i.name, c('light_green', '@' + i.user), i.text);
 }
-
 
 
 module.exports = {
