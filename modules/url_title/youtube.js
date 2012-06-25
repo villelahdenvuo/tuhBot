@@ -17,7 +17,8 @@ function handler(results, cb) {
 function formatter(i) {
   var duration, dur = secondsToTime(i.duration)
     , rating, rat = Math.round(i.rating)
-    , nsfw = i.contentRating ? ' - ' + c('light_red', 'NSFW') : ''
+    // If content rating all is one then the video is NSFW, makes sense.
+    , nsfw = (i.contentRating && i.contentRating.all === '1') ? ' - ' + c('light_red', 'NSFW') : ''
     // Add spaces between thousands to enhance reading experience.
     , viewCount = String(i.viewCount).replace(/(\d)(?=(\d{3})+$)/g, '$1,');
 
@@ -30,8 +31,8 @@ function formatter(i) {
            + (dur.m ? dur.m + 'm' : '')
            + (dur.s ? dur.s + 's' : '');
 
-  return format('%s %s by %s [%s - [%s] - %s views%s]',
-    c('yellow', '└→'), i.title, c('gray', i.uploader), duration, rating, viewCount, nsfw);
+  return format('YouTube: %s by %s [%s - [%s] - %s views%s]',
+    i.title, c('gray', i.uploader), duration, rating, viewCount, nsfw);
 }
 
 function secondsToTime(secs) {

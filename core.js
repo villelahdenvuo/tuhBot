@@ -45,7 +45,6 @@ Core.prototype.networkMessage = function (network, msg) {
   if (ircEvents.indexOf(msg.type) != -1) {
     a = _.values(msg.args);
     a.unshift(msg.type, network);  // We have to know what network we got the event from.
-    //console.log(a);
     this.emit.apply(this, a);
   }
 
@@ -55,14 +54,13 @@ Core.prototype.networkMessage = function (network, msg) {
 
 };
 
-Core.prototype.kill = function (signal) {
-  //_.each(this.networks, function (child, net) {
-    //console.log('Telling %s to disconnect...', net);
-    //child.kill(signal);
-    //child.send({type: 'command', action: 'disconnect'});
-  //});
-  //console.log("I'm out!");
-  //process.exit(signal);
+Core.prototype.exit = function (signal) {
+  var core = this;
+  // Tell all networks to disconnect and terminate.
+  Object.keys(core.networks).forEach(function (net) {
+    core.networks[net].kill('SIGUSR1');
+  });
+  process.stdin.pause(); // Quit listening to input.
 }
 
 Core.prototype.say = function (net, to, msg) {
@@ -72,6 +70,7 @@ Core.prototype.say = function (net, to, msg) {
 
 function CoreChannel(core) {
   Channel.call(this, core, 'core');
+
   this.modulePath = __dirname + '/core/modules/';
   this.init();
 }
@@ -81,18 +80,15 @@ util.inherits(CoreChannel, Channel);
 
 CoreChannel.prototype.registerEvent = function (event, module, handler, formatter) {
   // Only allow certain events to be binded to.
-  var chan = this, whitelist = ['join', 'part', '+mode', '-mode'];
+  var chan = this, whitelist = ['join', 'part', '+mode', '-mode', 'invite'];
   if (whitelist.indexOf(event) === -1) {
     console.log(module, 'tried to bind unsafe event:', event); return;
   }
   this.network.on(event, function () {
     var args = Array.prototype.slice.call(arguments)
-      , net = args[0] // We injected the network as the first argument.
+      , net = args[0]     // We injected the network as the first argument.
 
-    args.splice(0, 1);
-
-    console.log(args);
-    process.exit();
+    //args.splice(0, 1);    // Remove it.
 
     handler.call(module, args, function (out) {
       chan.network.say(net, chan.name, formatter(out));
@@ -103,17 +99,17 @@ CoreChannel.prototype.registerEvent = function (event, module, handler, formatte
 CoreChannel.prototype.handleMessage = function (network, from, message, raw) {
   var chan = this, commands = this.commands, routes = this.routes;
 
-  function handleRoute(r) {
-    r.handler.call(r.module, {from: from, message: message, hostmask: raw.prefix}, function (out) {
-      try { chan.network.say(net, from, r.formatter(out)); }
-      catch (err) {
-        console.error('%s Module %s formatter failed!', 'ERROR'.red, r.module);
-        console.log(err.stack);
+  function handleRoute(route) {
+    route.handler.call(route.module, {from: from, message: message, hostmask: raw.prefix},
+      function (out) {
+        try { chan.network.say(net, from, route.formatter(out)); }
+        catch (err) {
+          console.error('%s Module %s formatter failed!', 'ERROR'.red, route.module);
+          console.log(err.stack);
+        }
       }
-    });
+    );
   }
-
-  //console.log('CORE MESSAGE', network, from, message, commands);
 
   // Search for commands.
   for (var i in commands) { var r = commands[i];
@@ -124,6 +120,19 @@ CoreChannel.prototype.handleMessage = function (network, from, message, raw) {
   routes.forEach(function (r) {
     if (r.route.test(message)) { handleRoute(r); };
   });
+};
+
+CoreChannel.prototype.exposeIO = function () {
+  var io = Channel.prototype.exposeIO.call(this)
+    , core = this.network;
+
+  // Expose more I/O methods.
+  io['core'] = core;
+  io['send'] = function (net, args) {
+    core.networks[net].send({type: 'command', args: args});
+  };
+
+  return io;
 };
 
 process.on('uncaughtException', function (err) {

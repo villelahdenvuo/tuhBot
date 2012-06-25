@@ -4,8 +4,7 @@ var colors = require('colors')
   , async = require('async')
   , util = require('util')
   , irc = require('irc').Client
-  , fs = require('fs')
-  , _ = require('underscore');
+  , fs = require('fs');
 
 var Channel = require('./channel');
 
@@ -87,16 +86,14 @@ Network.prototype.forwardEvents = function () {
 };
 
 Network.prototype.listenMaster = function (msg) {
+  var net = this;
+
   function onMessage(msg) {
     console.log('Got message from core', msg);
 
-    /*if (msg.type == 'command') {
-      switch (msg.action) {
-        case 'disconnect':
-          console.log('%s going down.', this.name);
-          //this.disconnect('Killed by core.');
-      }
-    }*/
+    if (msg.type === 'command') {
+      net.send.apply(net, msg.args);
+    }
   }
   process.on('message', onMessage);
 }
@@ -118,13 +115,23 @@ process.on('uncaughtException', function (err) {
 var network = new Network(process.argv[2]);
 
 process.stdin.resume();
+
+// Keyboard interrupt.
 process.on('SIGINT', function () {
   console.log('%s received SIGINT', network.name.green);
 
-  network.disconnect('SIGINT', function () {
+  network.disconnect('Interrupted! ;O', function () {
     console.log('We have now quit from', network.name.green);
     process.exit();
   });
 });
 
+// Process will be signaled with SIGURS1 when core decides to exit.
+process.on('SIGUSR1', function () {
+  console.log('%s received SIGUSR1', network.name.green);
 
+  network.disconnect('Going down, c\'ya!', function () {
+    console.log('We have now quit from', network.name.green);
+    process.exit();
+  });
+});

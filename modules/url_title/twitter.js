@@ -19,8 +19,8 @@ function handler(results, cb) {
 }
 
 function formatter(i) {
-  return format('%s %s (%s): %s',
-    c('yellow', '└→'), i.name, c('light_green', '@' + i.user), i.text);
+  return format('Tweet: %s (%s): %s',
+    i.name, c('light_green', '@' + i.user), i.text);
 }
 
 

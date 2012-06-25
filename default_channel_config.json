@@ -1,0 +1,7 @@
+{
+  "commandPrefix": "!",
+  "colors": false,
+  "modules": {
+    "url_title": {}
+  }
+}
