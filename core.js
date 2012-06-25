@@ -78,33 +78,50 @@ util.inherits(CoreChannel, Channel);
 
 // Overwrite methods using network, because we don't know the network.
 
-CoreChannel.prototype.registerEvent = function (event, module, handler, formatter) {
-  // Only allow certain events to be binded to.
-  var chan = this, whitelist = ['join', 'part', '+mode', '-mode', 'invite'];
-  if (whitelist.indexOf(event) === -1) {
-    console.log(module, 'tried to bind unsafe event:', event); return;
+CoreChannel.prototype.registerEvent = function registerEvent(module, name, event) {
+  var chan = this;
+
+  function checkOp() {
+    var args = arguments[0];
+    if (chan.isOperator(args[args.length - 1].prefix)) {
+      console.log('Operator', args[1].green, 'dispatched event', name.green);
+      event.handler.apply(module, arguments);
+    } else {
+      console.log('Non-Operator', args[1].red, 'tried dispatch event', name.red);
+    }
   }
-  this.network.on(event, function () {
+
+  var module = module
+    , handler = event.op ? checkOp : event.handler;
+
+  // Only allow certain events to be binded to.
+  if (['join', 'part', '+mode', '-mode', 'invite'].indexOf(name) === -1) {
+    console.log('Module tried to bind unsafe event:', name.red); return;
+  }
+
+  chan.network.on(name, function () {
     var args = Array.prototype.slice.call(arguments)
       , net = args[0]     // We injected the network as the first argument.
-
-    //args.splice(0, 1);    // Remove it.
-
+  
     handler.call(module, args, function (out) {
-      chan.network.say(net, chan.name, formatter(out));
-    });
+      chan.network.say(net, chan.name, event.formatter(out));
+    })
   });
-};
+}
 
 CoreChannel.prototype.handleMessage = function (network, from, message, raw) {
   var chan = this, commands = this.commands, routes = this.routes;
 
-  function handleRoute(route) {
-    route.handler.call(route.module, {from: from, message: message, hostmask: raw.prefix},
+  function handleRoute(r) {
+    r.handler.call(r.module,
+      { from: from
+      , message: message
+      , hostmask: raw.prefix
+      , args: message.split(' ').splice(1) },
       function (out) {
-        try { chan.network.say(net, from, route.formatter(out)); }
+        try { chan.network.say(net, from, r.formatter(out)); }
         catch (err) {
-          console.error('%s Module %s formatter failed!', 'ERROR'.red, route.module);
+          console.error('%s Module %s formatter failed!', 'ERROR'.red, r.module);
           console.log(err.stack);
         }
       }
@@ -113,12 +130,12 @@ CoreChannel.prototype.handleMessage = function (network, from, message, raw) {
 
   // Search for commands.
   for (var i in commands) { var r = commands[i];
-    if (r.route.test(message)) { handleRoute(r); return; };
+    if (message.match(r.route)) { handleRoute(r); return; };
   }
 
   // It was not a command, let's see if we have routes for it.
   routes.forEach(function (r) {
-    if (r.route.test(message)) { handleRoute(r); };
+    if (message.match(r.route)) { handleRoute(r); };
   });
 };
 

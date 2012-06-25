@@ -1,23 +1,31 @@
 'use strict';
 
 function Control(io, config) {
-  this.io = io;
   this.config = config;
-  io.opCommand('exit', this, this.exit);
-  io.opOn('invite', this, this.invite);
+  this.io = io;
 }
 
-Control.prototype.toString = function () {
-  return '[module Control]';
+Control.prototype.commands = {
+  'exit': {
+           op: true,
+         help: 'Make the bot shutdown gracefully.',
+      handler: function () { this.io.core.exit(); }
+  },
+}
+
+Control.prototype.events = {
+  'invite': {
+           op: true,
+         help: 'Allow operator to invite the bot to channels',
+      handler: function (i) { this.io.send(i[0], ['JOIN', i[1]]); },
+  }
 };
 
-Control.prototype.exit = function (info, cb) {
-  this.io.core.exit();
-};
 
-Control.prototype.invite = function (info, cb) {
-  // Send join command to network.
-  this.io.send(info[0], ['JOIN', info[1]]);
+module.exports = {
+         name: 'Control',
+  description: 'Core module to control the bot.',
+       author: 'Ville "tuhoojabotti" Lahdenvuo',
+      contact: 'tuhoojabotti at gmail or tuhoojabotti at IRCNet',
+       module: Control
 };
-
-module.exports = Control;
