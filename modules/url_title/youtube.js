@@ -2,7 +2,8 @@ var request = require('request')
   , format = require('util').format
   , c = require('irc').colors.wrap;
 
-function handler(results, cb) {
+function handler(info, cb) {
+  var results = info.matches;
   if (!results) { return; }
 
   request('http://gdata.youtube.com/feeds/api/videos/' + results[1] + '?alt=jsonc&v=2',
@@ -48,6 +49,8 @@ function secondsToTime(secs) {
 }
 
 module.exports = {
+  route: /(?:youtube(?:-nocookie)?\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/ ]{11})/,
+  help: 'A route for Youtube video urls.',
   handler: handler,
   formatter: formatter
 };

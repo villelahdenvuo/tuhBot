@@ -10,8 +10,8 @@ Test.prototype.commands = {
       command: 'test',
            op: false,
          help: 'Prints out a string from config.',
-         args: [{name: 'prefix', description: 'Appends before the message.', optional: 'Me: '}],
-      handler: function (i, o) { o({message: this.config.string, prefix: i.args[0] || ''}); },
+         args: [{name: 'prefix', description: 'Appends before the message'}],
+      handler: function (i, o) { console.dir(i.args); o({message: this.config.string, prefix: i.args[0] || ''}); },
     formatter: function (o) { return i.prefix + i.message; }
   }
   // It is encouraged to organize complex features into sub-modules.
@@ -21,7 +21,6 @@ Test.prototype.commands = {
 Test.prototype.routes = {
   'smileys': {
         route: /(:|8|\.)-*(\)|\(|d|3|9|u|v|p|\||>|<)+/gi,
-           op: false,
          help: 'Detects smileys in messages.',
       handler: function (i, o) { o(i.message); },
     formatter: function (i) { return 'Found a smiley in message: ' + i; }

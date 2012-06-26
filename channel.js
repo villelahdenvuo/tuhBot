@@ -1,7 +1,9 @@
 'use strict';
 
 var colors = require('colors')
-  , fs = require('fs');
+  , util = require('util')
+  , fs = require('fs')
+  , cw = require('irc').colors.wrap;
 
 function Channel(network, name) {
   this.path = process.cwd() + '/' + name + '/';
@@ -23,12 +25,54 @@ Channel.prototype.init = function () {
   this.loadConfig();
   this.loadOverrides();
   this.initModules();
+  this.initHelp();
 
   if (this.config.operators) {
     this.operators = this.config.operators.map(function (op) {
       return new RegExp(op.replace(/[-[\]{}()+?.,\\^$|#\s]/g, "\\$&").replace(/\*/g, '(.+?)'));
     });
   }
+};
+
+Channel.prototype.initHelp = function() {
+  var chan = this;
+
+  function getHelp (command) {
+    if (!command) {
+      return 'Modules loaded: '
+        + Object.keys(chan.modules).map(function (name) { return name; }).join(', ')
+        + '\nAvailable commands: '
+        + chan.commands.map(function (cmd) { return cmd.name; }).join(', ');
+    } else if (command[0] === '#') {
+      var module = require(chan.modulePath + command.substring(1) + '/module');
+      if (!module) { return "Could not find module."; }
+      var contact = module.contact ? '\nContact: ' + module.contact : '';
+      return util.format("%s Made by %s%s",
+        module.description, module.author, contact);
+    } else {
+      for (var i = chan.commands.length - 1; i >= 0; i--) {
+        var cmd = chan.commands[i];
+        if (cmd.name !== command) { continue; }
+        return cmd.help + '\n'
+         + cmd.args.map(function (arg) {
+            return arg.default ?
+              util.format('  [%s="%s"] - %s\n', cw('gray', arg.name), arg.default, arg.description):
+              util.format('  %s - %s\n', cw('gray', arg.name), arg.description)
+           });
+      };
+    }
+  }
+
+  var help_command = {
+           op: false,
+         help: 'Shows help about commands. Optional parameters are displayed in square brackets. '
+             + 'Use `!help #module` to get information about modules.',
+         args: [{name: 'command', description: 'Command you want to know more about', default: 'commands'}],
+      handler: function (i, o) { o(i.args[0]); },
+    formatter: getHelp
+  };
+
+  chan.registerCommand({}, 'help', help_command);
 };
 
 Channel.prototype.loadConfig = function () {
@@ -59,7 +103,7 @@ Channel.prototype.initModules = function () {
 
   function initModule(name, config) {
     console.log(chan.name.green, 'Loading module', name.green, config);
-    
+
     // Load module or override.
     var module = chan.overrides[name] ?
       new (chan.overrides[name].module)(chan.exposeIO(), config) :
@@ -90,30 +134,50 @@ Channel.prototype.exposeIO = function () {
 Channel.prototype.handleMessage = function (from, message, raw) {
   var chan = this, commands = this.commands, routes = this.routes;
 
-  function handleRoute(r) {
-    r.handler.call(r.module,
-      { from: from
-      , message: message
-      , hostmask: raw.prefix
-      , args: message.split(' ').splice(1) },
-      function (out) {
-        try { chan.say(r.formatter(out)); }
-        catch (err) {
-          console.error('%s Module %s formatter failed!', 'ERROR'.red, r.module);
-          console.log(err.stack);
-        }
-      }
-    );
+  function output (route, out) {
+    try { chan.say(route.formatter(out)); }
+    catch (err) {
+      console.error('%s Module %s formatter failed!', 'ERROR'.red, route.module);
+      console.log(err.stack);
+    }
   }
 
   // Search for commands.
-  for (var i in commands) { var r = commands[i];
-    if (message.match(r.route)) { handleRoute(r); return; };
+  for (var i in commands) { var cmd = commands[i];
+    if (message.match(cmd.route)) {
+      var quots = /".+?"/.exec(message)
+        , temp = message.replace(/.+? /, '').replace(/".+?"/, '').replace(/^\s+|\s+$/g, '')
+        , args = temp.split(" ")
+        , current = cmd.args[args.length];
+      if (quots) {for (var i = 0; i < quots.length; i++) {args.push(quots[i].replace(/"/g, ""));}}
+
+      if (current && !current.default) {
+        chan.say(util.format("You are missing %s: %s. See `%shelp %s`",
+          cw('light_red', current.name), current.description, chan.config.commandPrefix, cmd.name));
+        return;
+      }
+
+      cmd.handler.call(cmd.module,
+        { from: from
+        , message: message
+        , hostmask: raw.prefix
+        , args: args
+        }, function (out) { output(cmd, out); }
+      ); return;
+    };
   }
 
   // It was not a command, let's see if we have routes for it.
   routes.forEach(function (r) {
-    if (message.match(r.route)) { handleRoute(r); };
+    if (message.match(r.route)) {
+      r.handler.call(r.module,
+        { from: from
+        , message: message
+        , hostmask: raw.prefix
+        , matches: message.match(r.route)
+        }, function (out) { output(r, out); }
+      );
+    };
   });
 };
 
@@ -162,7 +226,9 @@ Channel.prototype.registerCommand = function registerCommand(module, name, comma
        module: module,
       handler: command.op ? checkOp : command.handler,
     formatter: command.formatter,
-         help: command.help
+         help: command.help,
+         args: command.args,
+         name: name
   });
 };
 

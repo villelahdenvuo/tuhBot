@@ -2,9 +2,10 @@ var request = require('request')
   , format = require('util').format
   , c = require('irc').colors.wrap;
 
-function handler(results, cb) {
+function handler(info, cb) {
+  var results = info.matches;
   if (!results) { return; }
-  
+
   request('http://api.twitter.com/1/statuses/show/' + results[2] + '.json',
     function (err, res, body) {
       if (err || res.statusCode != 200) { return; }
@@ -25,6 +26,8 @@ function formatter(i) {
 
 
 module.exports = {
+  route: /twitter\.com\/\w+\/status(es)?\/(\d+)/,
+  help: 'A route for tweet urls.',
   handler: handler,
   formatter: formatter
 };

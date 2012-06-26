@@ -1,35 +1,38 @@
 'use strict';
 
-var handlers = {
-  //** TWITTER **//
-  'twitter\.com/\\w+/status(es)?/(\\d+)':
-  require('./twitter'),
-  //** YOUTUBE **//
-  '(?:youtube(?:-nocookie)?\.com/(?:[^/]+/.+/|(?:v|e(?:mbed)?)/|.*[?&]v=)|youtu\.be/)([^"&?/ ]{11})':
-  require('./youtube'),
-  //** REDDIT **//
-  '(reddit\.com/r/\\w+/comments|redd\.it)/(\\w+)':
-  require('./reddit')
-};
-
 function URLTitle(io, config) {
   this.io = io;
   this.config = config;
-  Object.keys(handlers).forEach(this.setupHandler, this);
+
+  // Sanitize formatter outputs.
+  Object.keys(this.routes).forEach(sanitize, this);
 }
 
+function sanitize(name) {
+  var route = this.routes[name]
+    , oldFormatter = route.formatter;
 
-URLTitle.prototype.toString = function () {
-  return '[module URLTitle]';
+  // Replace the old formatter with this wrapper.
+  route.formatter = function (i) {
+    return oldFormatter(i)
+      .replace(/\n/g, ' ')
+      .replace(/[ ]{2,}/g, ' ');
+  };
+
+  return route;
+}
+
+URLTitle.prototype.routes = {
+  'twitter': require('./twitter'),
+  'youtube': require('./youtube'),
+  'reddit': require('./reddit')
 };
 
-URLTitle.prototype.setupHandler = function (regexp) {
-  var title = handlers[regexp], config = this.config, re = new RegExp(regexp, 'gi');
 
-  // Add route to channel.
-  this.io.route(re, this, function (info, cb) {
-    title.handler(info.message.match(new RegExp(regexp)), cb); // FIXME: Closure problem.
-  }, title.formatter);
+module.exports = {
+         name: 'URLTitle',
+  description: 'Looks for links in messages and spews out information about them.',
+       author: 'Ville "tuhoojabotti" Lahdenvuo',
+      contact: 'tuhoojabotti at gmail or tuhoojabotti at IRCNet',
+       module: URLTitle
 };
-
-module.exports = URLTitle;

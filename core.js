@@ -102,7 +102,7 @@ CoreChannel.prototype.registerEvent = function registerEvent(module, name, event
   chan.network.on(name, function () {
     var args = Array.prototype.slice.call(arguments)
       , net = args[0]     // We injected the network as the first argument.
-  
+
     handler.call(module, args, function (out) {
       chan.network.say(net, chan.name, event.formatter(out));
     })
@@ -166,5 +166,3 @@ process.on('SIGINT', function () {
   // Wait for child processes to die cleanly (or something).
   setTimeout(function () { process.exit(); }, 1000);
 });
-
-
