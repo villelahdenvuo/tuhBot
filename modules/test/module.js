@@ -1,21 +1,18 @@
 'use strict';
 
-function Test(io, config) {
-  this.config = config;
-  this.io = io;
-}
+function Test(config) { this.config = config; }
+
+//--v WORKING STUFF v--//
 
 Test.prototype.commands = {
   'test': {
       command: 'test',
            op: false,
          help: 'Prints out a string from config.',
-         args: [{name: 'prefix', description: 'Appends before the message'}],
+         args: [{name: 'prefix', description: 'Appends before the message', default: 'Me: '}],
       handler: function (i, o) { o({message: this.config.string, prefix: i.args[0] || ''}); },
     formatter: function (o) { return i.prefix + i.message; }
   }
-  // It is encouraged to organize complex features into sub-modules.
-  // 'test2': require('./test-command')
 }
 
 Test.prototype.routes = {

@@ -1,7 +1,6 @@
 'use strict';
 
-function URLTitle(io, config) {
-  this.io = io;
+function URLTitle(config) {
   this.config = config;
 
   // Sanitize formatter outputs.
@@ -12,11 +11,10 @@ function sanitize(name) {
   var route = this.routes[name]
     , oldFormatter = route.formatter;
 
-  // Replace the old formatter with this wrapper.
   route.formatter = function (i) {
     return oldFormatter(i)
-      .replace(/\n/g, ' ')
-      .replace(/[ ]{2,}/g, ' ');
+      .replace(/\n/g, ' ')          // Obliterate line changes
+      .replace(/[ ]{2,}/g, ' ');    // Remove multiple spaces
   };
 
   return route;

@@ -1,13 +1,5 @@
 'use strict';
 
-var argv = require('optimist')
-    .default({d: false})
-    .alias({'d': 'debug', 'h': 'help'})
-    .describe({'d': 'Spam a lot.'})
-    .usage('Run bot: $0')
-    .check(function (a) { return !a.h; })
-    .argv;
-
 var fs = require('fs')
   , cp = require('child_process')
   , colors = require('colors')
@@ -38,7 +30,7 @@ Core.prototype.initNetwork = function (id) {
 };
 
 Core.prototype.networkMessage = function (network, msg) {
-  var ircEvents = ['registered', 'names', 'topic', 'join', 'part', 'quit', 'kick', 'kill',
+  var core = this, ircEvents = ['registered', 'names', 'topic', 'join', 'part', 'quit', 'kick', 'kill',
     'notice', 'pm', 'nick', 'invite', '+mode', '-mode', 'whois'], a;
 
   // Forward the event to our special CoreChannel
@@ -49,9 +41,13 @@ Core.prototype.networkMessage = function (network, msg) {
   }
 
   if (msg.type == 'message' || msg.type == 'message#') {
-    this.channel.handleMessage.call(this.channel, network, msg.args[0], msg.args[2], msg.args[3]);
-  }
+    var reply = function reply(message) {
+      core.say(network, msg.args[0], message);
+    }
 
+    this.channel.handleMessage.call(this.channel,
+      {net: network, from: msg.args[0], text: msg.args[2], raw: msg.args[3], reply: reply});
+  }
 };
 
 Core.prototype.exit = function (signal) {
@@ -71,86 +67,18 @@ Core.prototype.say = function (net, to, msg) {
 function CoreChannel(core) {
   Channel.call(this, core, 'core');
 
+  this.io = {
+    send: function (net, args) {
+      core.networks[net].send({type: 'command', args: args}); },
+    core: this.network
+  };
+
+  this.allowedEvents = ['join', 'part', '+mode', '-mode', 'invite'];
   this.modulePath = __dirname + '/core/modules/';
+  this.isCore = true;
   this.init();
 }
 util.inherits(CoreChannel, Channel);
-
-// Overwrite methods using network, because we don't know the network.
-
-CoreChannel.prototype.registerEvent = function registerEvent(module, name, event) {
-  var chan = this;
-
-  function checkOp() {
-    var args = arguments[0];
-    if (chan.isOperator(args[args.length - 1].prefix)) {
-      console.log('Operator', args[1].green, 'dispatched event', name.green);
-      event.handler.apply(module, arguments);
-    } else {
-      console.log('Non-Operator', args[1].red, 'tried dispatch event', name.red);
-    }
-  }
-
-  var module = module
-    , handler = event.op ? checkOp : event.handler;
-
-  // Only allow certain events to be binded to.
-  if (['join', 'part', '+mode', '-mode', 'invite'].indexOf(name) === -1) {
-    console.log('Module tried to bind unsafe event:', name.red); return;
-  }
-
-  chan.network.on(name, function () {
-    var args = Array.prototype.slice.call(arguments)
-      , net = args[0]     // We injected the network as the first argument.
-
-    handler.call(module, args, function (out) {
-      chan.network.say(net, chan.name, event.formatter(out));
-    })
-  });
-}
-
-CoreChannel.prototype.handleMessage = function (network, from, message, raw) {
-  var chan = this, commands = this.commands, routes = this.routes;
-
-  function handleRoute(r) {
-    r.handler.call(r.module,
-      { from: from
-      , message: message
-      , hostmask: raw.prefix
-      , args: message.split(' ').splice(1) },
-      function (out) {
-        try { chan.network.say(net, from, r.formatter(out)); }
-        catch (err) {
-          console.error('%s Module %s formatter failed!', 'ERROR'.red, r.module);
-          console.log(err.stack);
-        }
-      }
-    );
-  }
-
-  // Search for commands.
-  for (var i in commands) { var r = commands[i];
-    if (message.match(r.route)) { handleRoute(r); return; };
-  }
-
-  // It was not a command, let's see if we have routes for it.
-  routes.forEach(function (r) {
-    if (message.match(r.route)) { handleRoute(r); };
-  });
-};
-
-CoreChannel.prototype.exposeIO = function () {
-  var io = Channel.prototype.exposeIO.call(this)
-    , core = this.network;
-
-  // Expose more I/O methods.
-  io['core'] = core;
-  io['send'] = function (net, args) {
-    core.networks[net].send({type: 'command', args: args});
-  };
-
-  return io;
-};
 
 process.on('uncaughtException', function (err) {
   console.error('%s Core catched error at the very last minute!', 'ERROR'.red);
@@ -163,6 +91,5 @@ var bot = new Core();
 process.stdin.resume();
 process.on('SIGINT', function () {
   console.log('Core received SIGINT');
-  // Wait for child processes to die cleanly (or something).
-  setTimeout(function () { process.exit(); }, 1000);
+  setTimeout(function () { process.exit(); }, 500);
 });
