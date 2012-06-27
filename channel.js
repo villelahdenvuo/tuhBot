@@ -47,8 +47,8 @@ Channel.prototype.initHelp = function() {
       var module = require(chan.modulePath + command.substring(1) + '/module');
       if (!module) { return "Could not find module."; }
       var contact = module.contact ? '\nContact: ' + module.contact : '';
-      return util.format("%s Made by %s%s",
-        module.description, module.author, contact);
+      return util.format("%s (%s) by %s %s.%s",
+        module.name, module.version, module.author, module.description, contact);
     } else {
       for (var i = chan.commands.length - 1; i >= 0; i--) {
         var cmd = chan.commands[i];
@@ -59,16 +59,17 @@ Channel.prototype.initHelp = function() {
               util.format('  [%s="%s"] - %s\n', cw('gray', arg.name), arg.default, arg.description):
               util.format('  %s - %s\n', cw('gray', arg.name), arg.description)
            });
-      };
+      }
+      return 'No help found. See http://git.io/tuhbot for wiki.';
     }
   }
 
   var help_command = {
-           op: false,
-         help: 'Shows help about commands. Optional parameters are displayed in square brackets. '
-             + 'Use `!help #module` to get information about modules.',
-         args: [{name: 'command', description: 'Command you want to know more about', default: 'commands'}],
-      handler: function (i, o) { o(i.args[0]); },
+    help: 'Shows help about commands. Optional parameters are displayed in square brackets. '
+        + 'Use "#" to get information about modules.',
+    args: [{name: 'command'
+          , description: 'Command you want to know more about', default: 'commands'}],
+    handler: function (i, o) { o(i.args[0]); },
     formatter: getHelp
   };
 
@@ -145,11 +146,10 @@ Channel.prototype.handleMessage = function (from, message, raw) {
   // Search for commands.
   for (var i in commands) { var cmd = commands[i];
     if (message.match(cmd.route)) {
-      var quots = /".+?"/.exec(message)
-        , temp = message.replace(/.+? /, '').replace(/".+?"/, '').replace(/^\s+|\s+$/g, '')
-        , args = temp.split(" ")
+      // Parse and check parameters.
+      var args = (message.match(/([^\s]*"[^"]+"[^\s]*)|([^ ]+)/g) || [])
+                  .splice(1).map(function (s) { return s.replace(/^"(.+?)"$/, '$1') })
         , current = cmd.args[args.length];
-      if (quots) {for (var i = 0; i < quots.length; i++) {args.push(quots[i].replace(/"/g, ""));}}
 
       if (current && !current.default) {
         chan.say(util.format("You are missing %s: %s. See `%shelp %s`",

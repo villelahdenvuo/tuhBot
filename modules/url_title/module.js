@@ -31,8 +31,9 @@ URLTitle.prototype.routes = {
 
 module.exports = {
          name: 'URLTitle',
-  description: 'Looks for links in messages and spews out information about them.',
+  description: 'looks for links in messages and spews out information about them',
        author: 'Ville "tuhoojabotti" Lahdenvuo',
-      contact: 'tuhoojabotti at gmail or tuhoojabotti at IRCNet',
+      contact: 'tuhoojabotti at gmail or tuhoojabotti@IRCNet',
+      version: '0.2.3',
        module: URLTitle
 };

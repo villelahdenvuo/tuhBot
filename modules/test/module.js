@@ -11,7 +11,7 @@ Test.prototype.commands = {
            op: false,
          help: 'Prints out a string from config.',
          args: [{name: 'prefix', description: 'Appends before the message'}],
-      handler: function (i, o) { console.dir(i.args); o({message: this.config.string, prefix: i.args[0] || ''}); },
+      handler: function (i, o) { o({message: this.config.string, prefix: i.args[0] || ''}); },
     formatter: function (o) { return i.prefix + i.message; }
   }
   // It is encouraged to organize complex features into sub-modules.
@@ -60,8 +60,9 @@ Test.prototype.streams = {
 
 module.exports = {
          name: 'Test',
-  description: 'A simple module to demonstrate how to make modules.',
+  description: 'demonstrates how to make modules',
        author: 'Ville "tuhoojabotti" Lahdenvuo',
-      contact: 'tuhoojabotti at gmail or tuhoojabotti at IRCNet',
+      contact: 'tuhoojabotti at gmail or tuhoojabotti@IRCNet',
+      version: '1.33.7',
        module: Test
 };

@@ -27,5 +27,6 @@ module.exports = {
   description: 'Core module to control the bot.',
        author: 'Ville "tuhoojabotti" Lahdenvuo',
       contact: 'tuhoojabotti at gmail or tuhoojabotti at IRCNet',
+      version: '0.1',
        module: Control
 };
