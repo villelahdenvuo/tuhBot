@@ -5,6 +5,7 @@
     "test": {
       "string": "Hello World!"
     },
-    "url_title": {}
+    "url_title": {},
+    "url_size": { "warnSize": 6 }
   }
 }
