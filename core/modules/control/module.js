@@ -1,12 +1,14 @@
 'use strict';
 
-function Control(config, io) {
-  this.config = config;
-  this.io = io;
-  return this;
-}
+var Control = {
+         name: 'Control',
+  description: 'Core module to control the bot.',
+       author: 'Ville "tuhoojabotti" Lahdenvuo',
+      contact: 'tuhoojabotti at gmail or tuhoojabotti at IRCNet',
+      version: '0.1'
+};
 
-Control.prototype.commands = {
+Control.commands = {
   'exit': {
          op: true,
        help: 'Make the bot shutdown gracefully.',
@@ -18,9 +20,9 @@ Control.prototype.commands = {
        help: 'Make the bot exit current channel.',
     handler: function (i) { console.log('parting', i); this.io.send(i.net, ['PART', i.args[0]]); }
   }
-}
+};
 
-Control.prototype.events = {
+Control.events = {
   'invite': {
          op: true,
        help: 'Allow operator to invite the bot to channels',
@@ -29,11 +31,4 @@ Control.prototype.events = {
 };
 
 
-module.exports = {
-         name: 'Control',
-  description: 'Core module to control the bot.',
-       author: 'Ville "tuhoojabotti" Lahdenvuo',
-      contact: 'tuhoojabotti at gmail or tuhoojabotti at IRCNet',
-      version: '0.1',
-         init: Control
-};
+module.exports = Control;

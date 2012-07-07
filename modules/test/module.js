@@ -1,10 +1,16 @@
 'use strict';
 
-function Test(config) { this.config = config; return this; }
+var Test = {
+         name: 'Test',
+  description: 'demonstrates how to make modules',
+       author: 'Ville "tuhoojabotti" Lahdenvuo',
+      contact: 'tuhoojabotti at gmail or tuhoojabotti@IRCNet',
+      version: '1.33.7'
+};
 
 //--v WORKING STUFF v--//
 
-Test.prototype.commands = {
+Test.commands = {
   'test': {
       command: 'test',
            op: false,
@@ -15,7 +21,7 @@ Test.prototype.commands = {
   }
 }
 
-Test.prototype.routes = {
+Test.routes = {
   'smileys': {
         route: /(:|8|\.)-*(\)|\(|d|3|9|u|v|p|\||>|<)+/gi,
          help: 'Detects smileys in messages.',
@@ -24,7 +30,7 @@ Test.prototype.routes = {
   }
 };
 
-Test.prototype.events = {
+Test.events = {
   '+mode': {
            op: false,
          help: 'Tells people when modes are added.',
@@ -55,11 +61,4 @@ Test.prototype.streams = {
 };
 */
 
-module.exports = {
-         name: 'Test',
-  description: 'demonstrates how to make modules',
-       author: 'Ville "tuhoojabotti" Lahdenvuo',
-      contact: 'tuhoojabotti at gmail or tuhoojabotti@IRCNet',
-      version: '1.33.7',
-         init: Test
-};
+module.exports = Test;

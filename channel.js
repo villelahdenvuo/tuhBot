@@ -7,15 +7,17 @@ var colors = require('colors')
 
 function Channel(network, name) {
   this.allowedEvents = ['join', 'part', '+mode', '-mode'];
-  this.path = process.cwd() + '/' + name + '/';
+  this.path = process.cwd() + '/' + name.toLowerCase() + '/';
   this.modulePath = __dirname + '/modules/';
   this.isCore = false;
   this.network = network;
   this.name = name;
   this.config = {};
   this.operators = [];
-  this.commands = this.routes = [];
-  this.modules = this.overrides = {};
+  this.commands = [];
+  this.routes = [];
+  this.modules = {};
+  this.overrides = {};
   this.io = {};
 }
 
@@ -88,17 +90,18 @@ Channel.prototype.initModules = function () {
 
   function initModule(name, config) {
     console.log(chan.name.green, 'Loading module', name.green, config);
-
     // Load module or override.
     var module = chan.modules[name] = chan.overrides[name] ?
       chan.overrides[name] : require(chan.modulePath + name + '/module');
-    console.log(name);
-    module.instance = chan.modules[name].init(config, chan.io);
-    console.dir(module);
+    module.listeners = [];
+    module.context = {
+      io: chan.io,
+      config: config
+    };
     // Register commands/routes/events etc.
-    each(module.routes, function (name, route) { chan.registerRoute(module, name, route); }, chan);
-    each(module.commands, function (name, cmd) { chan.registerCommand(module, name, cmd); }, chan);
-    each(module.events, function (name, event) { chan.registerEvent(module, name, event); }, chan);
+    each(module.routes, function (n, route) { chan.registerRoute(module, n, route); }, chan);
+    each(module.commands, function (n, cmd) { chan.registerCommand(module, n, cmd); }, chan);
+    each(module.events, function (n, event) { chan.registerEvent(module, n, event); }, chan);
   }
 
   // Initialize modules
@@ -115,6 +118,7 @@ Channel.prototype.handleMessage = function (message) {
 
   for (var i in chan.commands) { cmd = chan.commands[i];
     if (message.text.match(cmd.route)) {
+        cmd.args = cmd.args || [];
         // Parse arguments `!help lol "hello world: "` -> ['lol', 'hello world: ']
         var allArgs, args = (message.text.match(/([^\s]*"[^"]+"[^\s]*)|([^ ]+)/g) || [])
           .splice(1).map(function (s) { return s.replace(/^"(.+?)"$/, '$1') })
@@ -125,7 +129,7 @@ Channel.prototype.handleMessage = function (message) {
           current.name), current.description, chan.config.commandPrefix, cmd.name));
       } else {
         allArgs = cmd.args.map(function (a, i) { return args[i] || a.default; });
-        cmd.handler.call(cmd.module,
+        cmd.handler.call(cmd.module.context,
           { from: message.from, message: message.text, net: message.net
           , hostmask: message.raw.prefix, args: allArgs },
           function (out) { output(cmd, out); });
@@ -135,7 +139,7 @@ Channel.prototype.handleMessage = function (message) {
 
   chan.routes.forEach(function (r) {
     if (message.text.match(r.route)) {
-      r.handler.call(r.module,
+      r.handler.call(r.module.context,
         { from: message.from, message: message.text
         , hostmask: message.raw.prefix, matches: message.text.match(r.route) },
         function (out) { output(r, out); });
@@ -150,61 +154,82 @@ Channel.prototype.isOperator = function (hostmask) {
 };
 
 Channel.prototype.registerRoute = function registerRoute(module, name, route) {
-  var chan = this, checkOp = function checkOp(info, cb) {
+  var chan = this, handler = route.handler, checkOp = function checkOp(info, cb) {
     if (chan.isOperator(info.hostmask)) {
       console.log('Operator', info.from.green, 'activated route', name.green);
-      command.handler.call(module, info, cb);
+      handler.call(module.context, info, cb);
     } else { console.log('Non-Operator', info.from.red, 'tried to activate route', name.red); }
   };
 
-  chan.routes.push({ route: route.route, module: module, help: route.help, name: name,
-    handler: route.op ? checkOp : route.handler, formatter: route.formatter });
+  route.handler = route.op ? checkOp : route.handler;
+  route.module = module;
+  route.name = name;
+
+  chan.routes.push(route);
 };
 
 Channel.prototype.registerCommand = function registerCommand(module, name, command) {
-  var chan = this, checkOp = function checkOp(info, cb) {
+  var chan = this, handler = command.handler, checkOp = function checkOp(info, cb) {
     if (chan.isOperator(info.hostmask)) {
       console.log('Operator', info.from.green, 'called', name.green);
-      command.handler.call(module, info, cb);
+      handler.call(module.context, info, cb);
     } else { console.log('Non-Operator', info.from.red, 'tried to call', name.red); }
   };
 
-  chan.commands.push({ route: new RegExp('^' + chan.config.commandPrefix + name + '( |$)', 'i'),
-    module: module, handler: command.op ? checkOp : command.handler, formatter: command.formatter,
-    help: command.help, args: command.args || [], name: name });
+  command.route = new RegExp('^' + chan.config.commandPrefix + name + '( |$)', 'i');
+  command.handler = command.op ? checkOp : command.handler;
+  command.module = module;  // Save reference to parent module.
+  command.name = name;
+
+  chan.commands.push(command);
 };
 
 Channel.prototype.registerEvent = function registerEvent(module, name, event) {
-  var chan = this, module = module, handler = event.op ? function checkOp() {
+  var chan = this, module = module
+    , handler = !event.op ? event.handler :
+  function checkOp() {
     var args = arguments[0];
     if (chan.isOperator(args[args.length - 1].prefix)) {
       console.log('Operator', args[1].green, 'dispatched event', name.green);
-      event.handler.apply(module, arguments);
+      event.handler.apply(module.context, arguments);
     } else {
       console.log('Non-Operator', args[1].red, 'tried dispatch event', name.red);
     }
-  } : event.handler;
+  };
 
   if (chan.allowedEvents.indexOf(name) === -1) {
     console.log('Module tried to bind unsafe event:', name.red); return; }
 
-  chan.network.on(name, function () {
-    if (chan.isCore) {
-      var net = arguments[0]; // If this is core channel the first argument is the network name.
-      handler.call(module, arguments, function (out) {
-        chan.network.say(net, chan.name, event.formatter(out));
-      });
-    } else {
-      handler.call(module, arguments, function (out) {
+  var onEvent = function () {
+    handler.call(module.context, arguments, function (out) {
+      if (chan.isCore) { // If this is core channel the first argument is the network name.
+        chan.network.say(arguments[0], chan.name, event.formatter(out));
+      } else {
         chan.network.say(chan.name, event.formatter(out));
-      });
-    }
-  });
+      }
+    });
+  };
+
+  // Register listener
+  chan.network.on(name, onEvent);
+  module.listeners.push([name, onEvent]);
 }
 
 Channel.prototype.say = function (msg) {
   this.network.say(this.name, this.config.colors ?
     msg : msg.replace(/[\x02\x1f\x16\x0f]|\x03\d{0,2}(?:,\d{0,2})?/g, ''));
+};
+
+Channel.prototype.clear = function() {
+  var chan = this;
+  function each(i, o, c) { if(i) {Object.keys(i).forEach(function (n) { o.call(c, n, i[n]); });} }
+
+  each(chan.modules, function (name, module) {
+    module.listeners.forEach(function (listener) {
+      console.log('removing listener for', listener[0]);
+      chan.network.removeListener(listener[0], listener[1]);
+    });
+  });
 };
 
 module.exports = Channel;

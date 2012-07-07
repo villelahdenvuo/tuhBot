@@ -68,7 +68,7 @@ Network.prototype.bindEvents = function () {
   function onPart(ch, nick, reason, message) {
     if (nick === this.nick) {
       console.log('Parted %s.', ch);
-      this.unloadChannel(ch.toLowerCase());
+      this.clearChannel(ch.toLowerCase());
     }
   }
 
@@ -101,22 +101,27 @@ Network.prototype.listenMaster = function (msg) {
 }
 
 Network.prototype.initChannel = function (name) {
-  console.log('Joined', name);
-  var net = this, channel = this.channelHandles[name] = new Channel(this, name);
+  var net = this, channel = net.channelHandles[name] = new Channel(net, name);
   channel.init();
+  channel.listener = function (from, message, raw) {
+    channel.handleMessage.call(channel,
+      {from: from, text: message, raw: raw, reply: reply});
+  };
 
   function reply(msg) {
     net.say(name, channel.config.colors ?
       msg : msg.replace(/[\x02\x1f\x16\x0f]|\x03\d{0,2}(?:,\d{0,2})?/g, ''));
   }
 
-  this.on('message' + name, function (from, message, raw) {
-    channel.handleMessage.call(channel, {from: from, text: message, raw: raw, reply: reply});
-  });
+  net.on('message' + name, channel.listener);
 };
 
-Network.prototype.unloadChannel = function (name) {
-
+Network.prototype.clearChannel = function (name) {
+  name = name.toLowerCase();
+  var channel = this.channelHandles[name];
+  this.removeListener('message' + name, channel.listener);
+  channel.clear();
+  channel = undefined;
 }
 
 process.on('uncaughtException', function (err) {
