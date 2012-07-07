@@ -70,6 +70,7 @@ Channel.prototype.initHelp = function() {
 Channel.prototype.loadConfig = function () {
   try { this.config = JSON.parse(fs.readFileSync(this.path + 'config.json')); }
   catch(e) { // Try default config
+    console.error(e.stack);
     try { this.config = JSON.parse(fs.readFileSync(__dirname + '/default_channel_config.json')); }
     catch(e) { console.log('Failed to load default channel config!\n%s', e.stack); process.exit(); }
   }
@@ -89,11 +90,11 @@ Channel.prototype.initModules = function () {
     console.log(chan.name.green, 'Loading module', name.green, config);
 
     // Load module or override.
-    var module = chan.overrides[name] ?
-      new (chan.overrides[name].module)(config, chan.io) :
-      new (require(chan.modulePath + name + '/module').module)(config, chan.io);
-    chan.modules[name] = module;
-
+    var module = chan.modules[name] = chan.overrides[name] ?
+      chan.overrides[name] : require(chan.modulePath + name + '/module');
+    console.log(name);
+    module.instance = chan.modules[name].init(config, chan.io);
+    console.dir(module);
     // Register commands/routes/events etc.
     each(module.routes, function (name, route) { chan.registerRoute(module, name, route); }, chan);
     each(module.commands, function (name, cmd) { chan.registerCommand(module, name, cmd); }, chan);
@@ -101,6 +102,7 @@ Channel.prototype.initModules = function () {
   }
 
   // Initialize modules
+  console.dir(this.config.modules);
   each(this.config.modules, initModule);
 };
 
@@ -111,7 +113,7 @@ Channel.prototype.handleMessage = function (message) {
       'ERROR'.red, route.name, err.stack); }
   }
 
-  for (var i in chan.commands) { cmd = chan.commands[i]
+  for (var i in chan.commands) { cmd = chan.commands[i];
     if (message.text.match(cmd.route)) {
         // Parse arguments `!help lol "hello world: "` -> ['lol', 'hello world: ']
         var allArgs, args = (message.text.match(/([^\s]*"[^"]+"[^\s]*)|([^ ]+)/g) || [])

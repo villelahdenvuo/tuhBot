@@ -3,6 +3,7 @@
 function Control(config, io) {
   this.config = config;
   this.io = io;
+  return this;
 }
 
 Control.prototype.commands = {
@@ -34,5 +35,5 @@ module.exports = {
        author: 'Ville "tuhoojabotti" Lahdenvuo',
       contact: 'tuhoojabotti at gmail or tuhoojabotti at IRCNet',
       version: '0.1',
-       module: Control
+         init: Control
 };

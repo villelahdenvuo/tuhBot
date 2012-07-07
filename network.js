@@ -101,6 +101,7 @@ Network.prototype.listenMaster = function (msg) {
 }
 
 Network.prototype.initChannel = function (name) {
+  console.log('Joined', name);
   var net = this, channel = this.channelHandles[name] = new Channel(this, name);
   channel.init();
 

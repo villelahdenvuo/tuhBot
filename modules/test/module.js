@@ -1,6 +1,6 @@
 'use strict';
 
-function Test(config) { this.config = config; }
+function Test(config) { this.config = config; return this; }
 
 //--v WORKING STUFF v--//
 
@@ -61,5 +61,5 @@ module.exports = {
        author: 'Ville "tuhoojabotti" Lahdenvuo',
       contact: 'tuhoojabotti at gmail or tuhoojabotti@IRCNet',
       version: '1.33.7',
-       module: Test
+         init: Test
 };
