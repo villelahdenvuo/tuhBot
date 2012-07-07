@@ -2,10 +2,8 @@
   "commandPrefix": "!",
   "colors": true,
   "modules": {
-    "test": {
-      "string": "Hello World!"
-    },
     "url_title": {},
-    "url_size": { "warnSize": 6 }
+    "url_size": { "warnSize": 6 },
+    "wiki": {}
   }
 }

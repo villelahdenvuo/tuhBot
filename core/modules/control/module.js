@@ -4,8 +4,8 @@ var Control = {
          name: 'Control',
   description: 'Core module to control the bot.',
        author: 'Ville "tuhoojabotti" Lahdenvuo',
-      contact: 'tuhoojabotti at gmail or tuhoojabotti at IRCNet',
-      version: '0.1'
+      contact: 'tuhoojabotti at gmail or IRCNet',
+      version: '0.2'
 };
 
 Control.commands = {

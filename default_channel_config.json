@@ -2,6 +2,8 @@
   "commandPrefix": "!",
   "colors": false,
   "modules": {
-    "url_title": {}
+    "url_title": {},
+    "url_size": { "warnSize": 6 },
+    "wiki": {}
   }
 }

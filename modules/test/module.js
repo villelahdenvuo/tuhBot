@@ -4,7 +4,7 @@ var Test = {
          name: 'Test',
   description: 'demonstrates how to make modules',
        author: 'Ville "tuhoojabotti" Lahdenvuo',
-      contact: 'tuhoojabotti at gmail or tuhoojabotti@IRCNet',
+      contact: 'tuhoojabotti at gmail or IRCNet',
       version: '1.33.7'
 };
 

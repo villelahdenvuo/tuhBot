@@ -23,7 +23,7 @@ var URLSize = {
          name: 'URLSize',
   description: 'looks for links in messages and warns about big downloads',
        author: 'Ville "tuhoojabotti" Lahdenvuo',
-      contact: 'tuhoojabotti at gmail or tuhoojabotti@IRCNet',
+      contact: 'tuhoojabotti at gmail or IRCNet',
       version: '0.1',
 };
 

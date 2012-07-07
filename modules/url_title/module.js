@@ -4,7 +4,7 @@ var URLTitle = {
          name: 'URLTitle',
   description: 'looks for links in messages and spews out information about them',
        author: 'Ville "tuhoojabotti" Lahdenvuo',
-      contact: 'tuhoojabotti at gmail or tuhoojabotti@IRCNet',
+      contact: 'tuhoojabotti at gmail or IRCNet',
       version: '0.2.3',
          init: init
 };
