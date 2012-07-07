@@ -19,9 +19,15 @@ function warn(i) {
     c('light_red', size.toFixed(1) + ' MB'), i['content-type']);
 }
 
-function URLSize(config) { this.config = config; }
+var URLSize = {
+         name: 'URLSize',
+  description: 'looks for links in messages and warns about big downloads',
+       author: 'Ville "tuhoojabotti" Lahdenvuo',
+      contact: 'tuhoojabotti at gmail or tuhoojabotti@IRCNet',
+      version: '0.1',
+};
 
-URLSize.prototype.routes = {
+URLSize.routes = {
   'url': {
         route: /(?:(?:https?):\/\/)(?:\S+(?::\S*)?@)?(?:(?!10(?:\.\d{1,3}){3})(?!127(?:\.\d{1,3}){3})(?!169\.254(?:\.\d{1,3}){2})(?!192\.168(?:\.\d{1,3}){2})(?!172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2})(?:[1-9]\d?|1\d\d|2[01]\d|22[0-3])(?:\.(?:1?\d{1,2}|2[0-4]\d|25[0-5])){2}(?:\.(?:[1-9]\d?|1\d\d|2[0-4]\d|25[0-4]))|(?:(?:[a-z\u00a1-\uffff0-9]+-?)*[a-z\u00a1-\uffff0-9]+)(?:\.(?:[a-z\u00a1-\uffff0-9]+-?)*[a-z\u00a1-\uffff0-9]+)*(?:\.(?:[a-z\u00a1-\uffff]{2,})))(?::\d{2,5})?(?:\/[^\s]*)?/i,
          help: 'an route to match any urls',
@@ -31,11 +37,4 @@ URLSize.prototype.routes = {
 };
 
 
-module.exports = {
-         name: 'URLSize',
-  description: 'looks for links in messages and warns about big downloads',
-       author: 'Ville "tuhoojabotti" Lahdenvuo',
-      contact: 'tuhoojabotti at gmail or tuhoojabotti@IRCNet',
-      version: '0.1',
-       module: URLSize
-};
+module.exports = URLSize;

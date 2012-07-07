@@ -25,8 +25,9 @@ Test.routes = {
   'smileys': {
         route: /(:|8|\.)-*(\)|\(|d|3|9|u|v|p|\||>|<)+/gi,
          help: 'Detects smileys in messages.',
-      handler: function (i, o) { o(i.message); },
-    formatter: function (i) { return 'Found a smiley in message: ' + i; }
+      handler: function (i, o) { o(i.matches); },
+    formatter: function (i) { return 'Found ' +
+                  (i.length > 1 ? 'smileys' : 'a smiley') + ' in message: ' + i.join(', '); }
   }
 };
 

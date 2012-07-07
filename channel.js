@@ -98,6 +98,8 @@ Channel.prototype.initModules = function () {
       io: chan.io,
       config: config
     };
+    // If the module requires special initialization, let's do it here.
+    if (module.init) { module.init.call(module); }
     // Register commands/routes/events etc.
     each(module.routes, function (n, route) { chan.registerRoute(module, n, route); }, chan);
     each(module.commands, function (n, cmd) { chan.registerCommand(module, n, cmd); }, chan);
@@ -105,7 +107,6 @@ Channel.prototype.initModules = function () {
   }
 
   // Initialize modules
-  console.dir(this.config.modules);
   each(this.config.modules, initModule);
 };
 
