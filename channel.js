@@ -54,7 +54,7 @@ Channel.prototype.initHelp = function() {
          + cmd.args.map(function (arg) {
             return arg.default ?
               util.format('  [%s="%s"] - %s\n', cw('gray', arg.name), arg.default, arg.description):
-              util.format('  %s - %s\n', cw('gray', arg.name), arg.description) });
+              util.format('  %s - %s\n', cw('gray', arg.name), arg.description) }).join('\n');
       } return 'No help found. See http://git.io/tuhbot for wiki.';
     }
   };
