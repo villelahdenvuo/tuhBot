@@ -5,7 +5,8 @@ var fs = require('fs')
   , colors = require('colors')
   , Channel = require('./channel')
   , util = require('util')
-  , _ = require('underscore');
+  , _ = require('underscore')
+  , readline = require('readline');
 
 function Core() {
   this.networks = {};
@@ -96,11 +97,6 @@ function exit() {
   process.exit();
 }
 
-if (process.platform === 'win32') {
-  var rl = require('readline').createInterface({ input: process.stdin, output: process.stdout });
-  rl.on('SIGINT', exit);
-} else {
-  process.stdin.resume();
-  process.on('SIGINT', exit);
-}
+var rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+rl.on('SIGINT', exit);
 
