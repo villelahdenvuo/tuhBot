@@ -54,7 +54,7 @@ Core.prototype.exit = function (signal) {
   var core = this;
   // Tell all networks to disconnect and terminate.
   Object.keys(core.networks).forEach(function (net) {
-    core.networks[net].kill('SIGUSR1');
+    core.networks[net].send({type: 'exit'});
   });
   process.stdin.pause(); // Quit listening to input.
 }
@@ -90,8 +90,17 @@ process.on('uncaughtException', function (err) {
 // Create a new bot.
 var bot = new Core();
 
-process.stdin.resume();
-process.on('SIGINT', function () {
+function exit() {
   console.log('Core received SIGINT');
-  setTimeout(function () { process.exit(); }, 500);
-});
+  bot.exit();
+  process.exit();
+}
+
+if (process.platform === 'win32') {
+  var rl = require('readline').createInterface({ input: process.stdin, output: process.stdout });
+  rl.on('SIGINT', exit);
+} else {
+  process.stdin.resume();
+  process.on('SIGINT', exit);
+}
+

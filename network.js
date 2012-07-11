@@ -109,6 +109,14 @@ Network.prototype.listenMaster = function (msg) {
         net.say(msg.to, msg.text); break;
       case 'rehash':
         each(net.channelHandles, function (n, ch) { console.log('hashing', n); ch.rehash(); }); break;
+      case 'exit':
+        console.log('Exiting from', net.name.green);
+        net.disconnect('ABANDON SHIP!', function () {
+          console.log('Shutting down connection to', net.name.green);
+          process.exit();
+        });
+        setTimeout(process.exit, 5000);
+        break;
     }
   }
   process.on('message', onMessage);
@@ -145,23 +153,3 @@ process.on('uncaughtException', function (err) {
 });
 
 var network = new Network(process.argv[2]);
-
-process.stdin.resume();
-process.on('SIGINT', function () {
-  console.log('%s received SIGINT', network.name.green);
-
-  network.disconnect('Interrupted! ;O', function () {
-    console.log('We have now quit from', network.name.green);
-    process.exit();
-  });
-});
-
-// Process will be signaled with SIGURS1 when core decides to exit.
-process.on('SIGUSR1', function () {
-  console.log('%s received SIGUSR1', network.name.green);
-
-  network.disconnect('Going down, c\'ya!', function () {
-    console.log('We have now quit from', network.name.green);
-    process.exit();
-  });
-});
