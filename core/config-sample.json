@@ -1,5 +1,5 @@
 {
-  "operators": ["tuhoojabotti!*@irkin.tuhoojabotti.com"],
+  "operators": ["operator!*@example.com"],
   "commandPrefix": "?",
   "colors": true,
   "modules": {
