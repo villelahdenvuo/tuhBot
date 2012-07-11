@@ -3,7 +3,10 @@
 var colors = require('colors')
   , util = require('util')
   , fs = require('fs')
-  , cw = require('irc').colors.wrap;
+  , cw = require('irc').colors.wrap
+  , builtins = require('./builtins');
+
+function each(i, o, c) { if(i) {Object.keys(i).forEach(function (n) { o.call(c, n, i[n]); });} }
 
 function Channel(network, name) {
   this.allowedEvents = ['join', 'part', '+mode', '-mode'];
@@ -25,48 +28,12 @@ Channel.prototype.init = function () {
   this.loadConfig();
   this.loadOverrides();
   this.initModules();
-  this.initHelp();
+  builtins(this);
 
   if (this.config.operators) {
     this.operators = this.config.operators.map(function (op) {
       return new RegExp(op.replace(/[-[\]{}()+?.,\\^$|#\s]/g, "\\$&").replace(/\*/g, '(.+?)')); });
   }
-};
-
-Channel.prototype.initHelp = function() {
-  var chan = this, getHelp = function getHelp(command) {
-    if (command === 'commands') {
-      return 'Modules loaded: '
-        + Object.keys(chan.modules).map(function (name) { return name; }).join(', ')
-        + '\nAvailable commands: '
-        + chan.commands.map(function (cmd) { return cmd.name; }).join(', ');
-    } else if (command[0] === '#') {
-      var module = require(chan.modulePath + command.substring(1) + '/module');
-      if (!module) { return "Could not find module."; }
-      var contact = module.contact ? '\nContact: ' + module.contact : '';
-      return util.format("%s (%s) by %s %s.%s",
-        module.name, module.version, module.author, module.description, contact);
-    } else {
-      for (var i = chan.commands.length - 1; i >= 0; i--) {
-        var cmd = chan.commands[i];
-        if (cmd.name !== command) { continue; }
-        return cmd.help + '\n'
-         + cmd.args.map(function (arg) {
-            return arg.default ?
-              util.format('  [%s="%s"] - %s\n', cw('gray', arg.name), arg.default, arg.description):
-              util.format('  %s - %s\n', cw('gray', arg.name), arg.description) });
-      } return 'No help found. See http://git.io/tuhbot for wiki.';
-    }
-  };
-
-  chan.registerCommand({}, 'help', {
-    help: 'Shows help about commands. Optional parameters are displayed in square brackets. '
-        + 'Use "#" to get information about modules.',
-    args: [{name: 'command'
-          , description: 'Command you want to know more about', default: 'commands'}],
-    handler: function (i, o) { o(i.args[0]); },
-    formatter: getHelp
-  });
 };
 
 Channel.prototype.loadConfig = function () {
@@ -80,6 +47,7 @@ Channel.prototype.loadConfig = function () {
 
 Channel.prototype.loadOverrides = function () {
   if (fs.existsSync(this.path + 'customize.js')) {
+    console.log('Loading overrides...');
     this.overrides = require(this.path + 'customize'); }
 };
 
@@ -94,6 +62,7 @@ Channel.prototype.initModules = function () {
     var module = chan.modules[name] = chan.overrides[name] ?
       chan.overrides[name] : require(chan.modulePath + name + '/module');
     module.listeners = [];
+    module.timers = [];
     module.context = {
       io: chan.io,
       config: config
@@ -104,6 +73,7 @@ Channel.prototype.initModules = function () {
     each(module.routes, function (n, route) { chan.registerRoute(module, n, route); }, chan);
     each(module.commands, function (n, cmd) { chan.registerCommand(module, n, cmd); }, chan);
     each(module.events, function (n, event) { chan.registerEvent(module, n, event); }, chan);
+    each(module.intervals, function (n, intv) { chan.registerInterval(module, n, intv); }, chan);
   }
 
   // Initialize modules
@@ -129,10 +99,9 @@ Channel.prototype.handleMessage = function (message) {
         message.reply(util.format("You are missing %s: %s. See `%shelp %s`", cw('light_red',
           current.name), current.description, chan.config.commandPrefix, cmd.name));
       } else {
-        allArgs = cmd.args.map(function (a, i) { return args[i] || a.default; });
-        cmd.handler.call(cmd.module.context,
-          { from: message.from, message: message.text, net: message.net
-          , hostmask: message.raw.prefix, args: allArgs },
+        message.hostmask = message.raw.prefix;
+        message.args = cmd.args.map(function (a, i) { return args[i] || a.default; });
+        cmd.handler.call(cmd.module.context, message,
           function (out) { output(cmd, out); });
       } return; // Command executed, nothing to do.
     };
@@ -177,7 +146,7 @@ Channel.prototype.registerCommand = function registerCommand(module, name, comma
     } else { console.log('Non-Operator', info.from.red, 'tried to call', name.red); }
   };
 
-  command.route = new RegExp('^' + chan.config.commandPrefix + name + '( |$)', 'i');
+  command.route = new RegExp('^\\' + chan.config.commandPrefix + name + '( |$)', 'i');
   command.handler = command.op ? checkOp : command.handler;
   command.module = module;  // Save reference to parent module.
   command.name = name;
@@ -199,14 +168,16 @@ Channel.prototype.registerEvent = function registerEvent(module, name, event) {
   };
 
   if (chan.allowedEvents.indexOf(name) === -1) {
-    console.log('Module tried to bind unsafe event:', name.red); return; }
+    console.log('Module tried to bind unsafe event:', name.red);
+    return;
+  }
 
   var onEvent = function () {
     handler.call(module.context, arguments, function (out) {
       if (chan.isCore) { // If this is core channel the first argument is the network name.
         chan.network.say(arguments[0], chan.name, event.formatter(out));
       } else {
-        chan.network.say(chan.name, event.formatter(out));
+        chan.say(event.formatter(out));
       }
     });
   };
@@ -216,6 +187,16 @@ Channel.prototype.registerEvent = function registerEvent(module, name, event) {
   module.listeners.push([name, onEvent]);
 }
 
+Channel.prototype.registerInterval = function(module, name, intv) {
+  var chan = this;
+  var interval= setInterval(function () {
+    intv.handler.call(module.context, function (out) {
+      chan.say(intv.formatter(out));
+    })
+  }, intv.interval)
+  module.timers.push(interval);
+};
+
 Channel.prototype.say = function (msg) {
   this.network.say(this.name, this.config.colors ?
     msg : msg.replace(/[\x02\x1f\x16\x0f]|\x03\d{0,2}(?:,\d{0,2})?/g, ''));
@@ -223,14 +204,28 @@ Channel.prototype.say = function (msg) {
 
 Channel.prototype.clear = function() {
   var chan = this;
-  function each(i, o, c) { if(i) {Object.keys(i).forEach(function (n) { o.call(c, n, i[n]); });} }
 
   each(chan.modules, function (name, module) {
     module.listeners.forEach(function (listener) {
       console.log('removing listener for', listener[0]);
       chan.network.removeListener(listener[0], listener[1]);
     });
+    module.timers.forEach(clearTimeout);
   });
+  this.routes = [];
+  this.commands = [];
+  this.modules = {};
+};
+
+Channel.prototype.rehash = function() {
+  this.clear();
+  // Empty require cache, so that we can update modules.
+  each(require.cache, function (file, value) {
+    delete require.cache[file];
+  })
+  // Reinitialize
+  this.init();
+  if (!this.isCore) { this.say('Rehashed modules.'); }
 };
 
 module.exports = Channel;

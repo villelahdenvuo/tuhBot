@@ -8,6 +8,7 @@ var colors = require('colors')
 
 var Channel = require('./channel');
 
+function each(i, o, c) { if(i) {Object.keys(i).forEach(function (n) { o.call(c, n, i[n]); });} }
 
 function Network(name) {
   this.channelHandles = {};
@@ -72,10 +73,18 @@ Network.prototype.bindEvents = function () {
     }
   }
 
+  function onKick(ch, nick, by, reason, message) {
+    if (nick === this.nick) {
+      console.log('Kicked from %s.', ch);
+      this.clearChannel(ch.toLowerCase());
+    }
+  }
+
   this.on('registered', onRegistered);
   this.on('join', onJoin);
   this.on('names', onNames);
   this.on('part', onPart);
+  this.on('kick', onKick);
 };
 
 Network.prototype.forwardEvents = function () {
@@ -93,8 +102,13 @@ Network.prototype.listenMaster = function (msg) {
   var net = this;
 
   function onMessage(msg) {
-    if (msg.type === 'command') {
-      net.send.apply(net, msg.args);
+    switch(msg.type) {
+      case 'command':
+        net.send.apply(net, msg.args); break;
+      case 'message':
+        net.say(msg.to, msg.text); break;
+      case 'rehash':
+        each(net.channelHandles, function (n, ch) { console.log('hashing', n); ch.rehash(); }); break;
     }
   }
   process.on('message', onMessage);
@@ -122,6 +136,7 @@ Network.prototype.clearChannel = function (name) {
   this.removeListener('message' + name, channel.listener);
   channel.clear();
   channel = undefined;
+  delete this.channelHandles[name];
 }
 
 process.on('uncaughtException', function (err) {

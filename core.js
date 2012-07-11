@@ -30,11 +30,11 @@ Core.prototype.initNetwork = function (id) {
 };
 
 Core.prototype.networkMessage = function (network, msg) {
-  var core = this, ircEvents = ['registered', 'names', 'topic', 'join', 'part', 'quit', 'kick', 'kill',
-    'notice', 'pm', 'nick', 'invite', '+mode', '-mode', 'whois'], a;
+  var core = this, ircEvents = ['registered', 'names', 'topic', 'join', 'part', 'quit', 'kick',
+   'kill', 'notice', 'pm', 'nick', 'invite', '+mode', '-mode', 'whois'], a;
 
   // Forward the event to our special CoreChannel
-  if (ircEvents.indexOf(msg.type) != -1) {
+  if (ircEvents.indexOf(msg.type) !== -1) {
     a = _.values(msg.args);
     a.unshift(msg.type, network);  // We have to know what network we got the event from.
     this.emit.apply(this, a);
@@ -42,11 +42,11 @@ Core.prototype.networkMessage = function (network, msg) {
 
   if (msg.type == 'message' || msg.type == 'message#') {
     var reply = function reply(message) {
-      core.say(network, msg.args[0], message);
+      core.say(network, msg.args[1], message);
     }
-
     this.channel.handleMessage.call(this.channel,
-      {net: network, from: msg.args[0], text: msg.args[2], raw: msg.args[3], reply: reply});
+      {net: network, from: msg.args[0], channel: msg.args[1], text: msg.args[2], raw: msg.args[3],
+       reply: reply});
   }
 };
 
@@ -61,8 +61,9 @@ Core.prototype.exit = function (signal) {
 
 Core.prototype.say = function (net, to, msg) {
   // Tell network to send a message
-  this.networks[net].send({type: 'message', to: to, message: msg});
+  this.networks[net].send({type: 'message', to: to, text: msg});
 };
+
 
 function CoreChannel(core) {
   Channel.call(this, core, 'core');
@@ -70,7 +71,8 @@ function CoreChannel(core) {
   this.io = {
     send: function (net, args) {
       core.networks[net].send({type: 'command', args: args}); },
-    core: this.network
+    core: this.network,
+    channel: this
   };
 
   this.allowedEvents = ['join', 'part', '+mode', '-mode', 'invite'];

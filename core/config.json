@@ -1,6 +1,6 @@
 {
   "operators": ["tuhoojabotti!*@irkin.tuhoojabotti.com"],
-  "commandPrefix": "¤",
+  "commandPrefix": "?",
   "colors": true,
   "modules": {
     "control": {}

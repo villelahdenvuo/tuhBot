@@ -16,9 +16,11 @@ Control.commands = {
   },
   'part': {
          op: true,
-       args: [{name: 'channel', description: 'Where to part'}],
-       help: 'Make the bot exit current channel.',
-    handler: function (i) { console.log('parting', i); this.io.send(i.net, ['PART', i.args[0]]); }
+       args: [{name: 'channel', description: 'Where to part', default: 'current'}],
+       help: 'Make the bot exit a channel.',
+    handler: function (i) {
+      this.io.send(i.net, ['PART', i.args[0] == 'current' ? i.channel : i.args[0]]);
+    }
   }
 };
 
