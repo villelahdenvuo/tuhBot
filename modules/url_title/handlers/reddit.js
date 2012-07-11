@@ -1,15 +1,14 @@
+'use strict';
+
 var request = require('request')
   , format = require('util').format
   , c = require('irc').colors.wrap
   , moment = require('moment')
-  , urly = require('../shorturl');
+  , urly = require('../../shorturl');
 
-function handler(info, cb) {
-  var results = info.matches;
-  if (!results) { return; }
-
+function handler(matches, cb) {
   request({
-    url: 'http://www.reddit.com/by_id/t3_' + results[2] + '.json',
+    url: 'http://www.reddit.com/by_id/t3_' + matches[2] + '.json',
     headers: {'User-Agent': 'tuhBot IRC-bot by /u/tuhoojabotti'}
   }, function (err, res, body) {
       if (err || res.statusCode !== 200) { return; }

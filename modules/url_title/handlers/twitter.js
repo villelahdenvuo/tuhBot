@@ -1,12 +1,11 @@
+'use strict';
+
 var request = require('request')
   , format = require('util').format
   , c = require('irc').colors.wrap;
 
-function handler(info, cb) {
-  var results = info.matches;
-  if (!results) { return; }
-
-  request('http://api.twitter.com/1/statuses/show/' + results[2] + '.json',
+function handler(matches, cb) {
+  request('http://api.twitter.com/1/statuses/show/' + matches[2] + '.json',
     function (err, res, body) {
       if (err || res.statusCode != 200) { return; }
       var data = JSON.parse(body);
