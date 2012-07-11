@@ -1,6 +1,6 @@
 {
-  "nick": "tuhBot2",
-  "userName": "tuhoojabotti",
+  "nick": "myBot",
+  "userName": "myIRCName",
   "realName": "a Node.js IRC-bot by tuhoojabotti",
   "floodProtection": true,
   "autoRejoin": false,
