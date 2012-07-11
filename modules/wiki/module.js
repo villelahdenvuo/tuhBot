@@ -12,7 +12,11 @@ var Wiki = {
 };
 
 function search(info, cb) {
+<<<<<<< HEAD
   var q = info.text.split(' ').splice(1) || []
+=======
+  var q = info.message.split(' ').splice(1) || []
+>>>>>>> 71b50677c28644ba6532518801ef52c5a47ca2ab
     , nugget = q[0] == 'nugget' ? q.splice(0, 1)[0] == 'nugget' : false
     , lang = q[0] && q[0].length == 2 ? q.splice(0, 1)[0] : 'en'
     , api = 'http://' + lang + '.wikipedia.org/w/api.php?action=query&list=search'
