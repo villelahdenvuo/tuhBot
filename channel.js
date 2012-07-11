@@ -82,7 +82,7 @@ Channel.prototype.initModules = function () {
 
 Channel.prototype.handleMessage = function (message) {
   var chan = this, cmd, output = function output (route, out) {
-    try { message.reply(route.formatter(out)); }
+    try { message.reply(route.formatter.call(this, out)); }
     catch (err) { console.error('%s Module %s formatter failed!\n%s',
       'ERROR'.red, route.name, err.stack); }
   }
@@ -91,7 +91,7 @@ Channel.prototype.handleMessage = function (message) {
     if (message.text.match(cmd.route)) {
         cmd.args = cmd.args || [];
         // Parse arguments `!help lol "hello world: "` -> ['lol', 'hello world: ']
-        var allArgs, args = (message.text.match(/([^\s]*"[^"]+"[^\s]*)|([^ ]+)/g) || [])
+        var args = (message.text.match(/([^\s]*"[^"]+"[^\s]*)|([^ ]+)/g) || [])
           .splice(1).map(function (s) { return s.replace(/^"(.+?)"$/, '$1') })
         , current = cmd.args && cmd.args[args.length];
 
@@ -102,7 +102,7 @@ Channel.prototype.handleMessage = function (message) {
         message.hostmask = message.raw.prefix;
         message.args = cmd.args.map(function (a, i) { return args[i] || a.default; });
         cmd.handler.call(cmd.module.context, message,
-          function (out) { output(cmd, out); });
+          function (out) { output.call(cmd.module.context, cmd, out); });
       } return; // Command executed, nothing to do.
     };
   }
@@ -112,7 +112,7 @@ Channel.prototype.handleMessage = function (message) {
       r.handler.call(r.module.context,
         { from: message.from, message: message.text
         , hostmask: message.raw.prefix, matches: message.text.match(r.route) },
-        function (out) { output(r, out); });
+        function (out) { output.call(r.module.context, r, out); });
     };
   });
 };
