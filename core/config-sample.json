@@ -2,6 +2,7 @@
   "operators": ["operator!*@example.com"],
   "commandPrefix": "?",
   "colors": true,
+  "quitMessage": "I've had enough. http://git.io/tuhbot",
   "modules": {
     "control": {}
   }

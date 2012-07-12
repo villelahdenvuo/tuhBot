@@ -55,7 +55,7 @@ Core.prototype.exit = function (signal) {
   var core = this;
   // Tell all networks to disconnect and terminate.
   Object.keys(core.networks).forEach(function (net) {
-    core.networks[net].send({type: 'exit'});
+    core.networks[net].send({type: 'exit', message: (core.channel.config.quitMessage || "http://git.io/tuhbot")});
   });
 }
 

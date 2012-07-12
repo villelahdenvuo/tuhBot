@@ -111,7 +111,7 @@ Network.prototype.listenMaster = function (msg) {
         each(net.channelHandles, function (n, ch) { console.log('hashing', n); ch.rehash(msg.silent); }); break;
       case 'exit':
         console.log('Exiting from', net.name.green);
-        net.disconnect('ABANDON SHIP!', function () {
+        net.disconnect(msg.message, function () {
           console.log('Shutting down connection to', net.name.green);
           process.exit();
         });
