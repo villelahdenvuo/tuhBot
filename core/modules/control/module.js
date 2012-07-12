@@ -11,15 +11,16 @@ var Control = {
 Control.commands = {
   'exit': {
          op: true,
+       args: [{name: 'message', description: 'Quit message', default: '<from config>'}],
        help: 'Make the bot shutdown gracefully.',
-    handler: function () { this.io.core.exit(); }
+    handler: function (i) { this.io.core.exit(i.args[0] === '<from config>' ? undefined : i.args[0]); }
   },
   'part': {
          op: true,
        args: [{name: 'channel', description: 'Where to part', default: 'current'}],
        help: 'Make the bot exit a channel.',
     handler: function (i) {
-      this.io.send(i.net, ['PART', i.args[0] == 'current' ? i.channel : i.args[0]]);
+      this.io.send(i.net, ['PART', i.args[0] === 'current' ? i.channel : i.args[0]]);
     }
   }
 };

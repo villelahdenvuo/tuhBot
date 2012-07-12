@@ -51,12 +51,16 @@ Core.prototype.networkMessage = function (network, msg) {
   }
 };
 
-Core.prototype.exit = function (signal) {
+Core.prototype.exit = function (message) {
   var core = this;
   // Tell all networks to disconnect and terminate.
   Object.keys(core.networks).forEach(function (net) {
-    core.networks[net].send({type: 'exit', message: (core.channel.config.quitMessage || "http://git.io/tuhbot")});
+    core.networks[net].send({
+      type: 'exit',
+      message: (message || core.channel.config.quitMessage || "http://git.io/tuhbot")
+    });
   });
+  process.exit();
 }
 
 Core.prototype.say = function (net, to, msg) {
@@ -93,7 +97,6 @@ var bot = new Core();
 function exit() {
   console.log('Core received SIGINT');
   bot.exit();
-  process.exit();
 }
 
 var rl = readline.createInterface({ input: process.stdin, output: process.stdout });
