@@ -108,7 +108,7 @@ Network.prototype.listenMaster = function (msg) {
       case 'message':
         net.say(msg.to, msg.text); break;
       case 'rehash':
-        each(net.channelHandles, function (n, ch) { console.log('hashing', n); ch.rehash(); }); break;
+        each(net.channelHandles, function (n, ch) { console.log('hashing', n); ch.rehash(msg.silent); }); break;
       case 'exit':
         console.log('Exiting from', net.name.green);
         net.disconnect('ABANDON SHIP!', function () {

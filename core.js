@@ -57,7 +57,6 @@ Core.prototype.exit = function (signal) {
   Object.keys(core.networks).forEach(function (net) {
     core.networks[net].send({type: 'exit'});
   });
-  process.stdin.pause(); // Quit listening to input.
 }
 
 Core.prototype.say = function (net, to, msg) {

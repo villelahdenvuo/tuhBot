@@ -59,10 +59,11 @@ function initBuiltins(chan) {
   chan.registerCommand({context: {io: chan.io}}, 'rehash', {
     op: true,
     help: 'Reload modules.',
+    args: [{name: 'silent', description: 'No spamming', default: 'false'}],
     handler: function (i, o) {
       var nets = this.io.core.networks;
       each(nets, function (net) {
-        nets[net].send({type: 'rehash'});
+        nets[net].send({type: 'rehash', silent: (i.args[0] !== 'false')});
       });
       chan.rehash(); // Also rehash core channel.
     }

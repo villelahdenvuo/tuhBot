@@ -217,7 +217,7 @@ Channel.prototype.clear = function() {
   this.modules = {};
 };
 
-Channel.prototype.rehash = function() {
+Channel.prototype.rehash = function(silent) {
   this.clear();
   // Empty require cache, so that we can update modules.
   each(require.cache, function (file, value) {
@@ -225,7 +225,7 @@ Channel.prototype.rehash = function() {
   })
   // Reinitialize
   this.init();
-  if (!this.isCore) { this.say('Rehashed modules.'); }
+  if (!this.isCore && !silent) { this.say('Rehashed modules.'); }
 };
 
 module.exports = Channel;
