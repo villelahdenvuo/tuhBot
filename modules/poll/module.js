@@ -24,6 +24,7 @@ function reset(poll) {
   poll.choices = [];
   poll.question = '';
   poll.voters = [];
+  poll.totalVotes = 0;
   clearTimeout(poll.timeout);
 }
 
@@ -40,7 +41,7 @@ function pollHandler(info, cb) {
         winners.push(choice);
       } else { break; }
     }
-    cb({type: 'end', winners: winners});
+    cb({type: 'end', winners: winners, poll: poll});
     reset(poll);
   } else if (info.args.length >= 3) { // Start a poll.
     poll.running = true;
@@ -64,13 +65,15 @@ function pollFormatter(i) {
     case 'end':
       if (i.winners.length === 1) {
         var winner = i.winners[0];
-        return format('Poll ended. Winner is %s with %d %s.',
-          winner.text, winner.votes, winner.votes == 1 ? 'vote' : 'votes');
+        return format('Poll ended. Winner is %s with %d %s. Total of %d %s given.',
+          winner.text, winner.votes, winner.votes == 1 ? 'vote' : 'votes',
+          i.poll.totalVotes, i.poll.totalVotes == 1 ? 'vote was' : 'votes were');
       } else {
         var votes = i.winners[0].votes;
-        return format('Poll ended. Winners are %s with %d %s.',
+        return format('Poll ended. Winners are %s with %d %s. Total of %d %s given.',
           join(i.winners.map(function(c) { return c.text; }), ', ', ' and '), votes,
-          votes == 1 ? 'vote' : 'votes');
+          votes == 1 ? 'vote' : 'votes',
+          i.poll.totalVotes, i.poll.totalVotes == 1 ? 'vote was' : 'votes were');
       }
     case 'fail': return 'Poll not running, you have to ask something to create a new one.';
   }
@@ -83,8 +86,9 @@ function voteHandler(info, cb) {
   // Not a number or out of range.
   if (isNaN(selection) || selection > this.poll.length) { return; }
   // Already voted once.
-  if (this.poll.voters.indexOf(info.from) !== -1) { cb(); return; }
+  if (this.poll.voters.indexOf(info.from) !== -1) { cb(info.from); return; }
 
+  this.poll.totalVotes++;
   this.poll.choices[selection - 1].votes++;
   this.poll.voters.push(info.from);
 }
@@ -107,7 +111,7 @@ Poll.routes = {
     route: /^[1-9]/,
     help: 'Records votes to polls',
     handler: voteHandler,
-    formatter: function voteFormatter() { return 'You have already voted!'; }
+    formatter: function voteFormatter(i) { return i + ', you have already voted!'; }
   }
 };
 

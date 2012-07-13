@@ -32,7 +32,7 @@ Channel.prototype.init = function () {
 
   if (this.config.operators) {
     this.operators = this.config.operators.map(function (op) {
-      return new RegExp(op.replace(/[-[\]{}()+?.,\\^$|#\s]/g, "\\$&").replace(/\*/g, '(.*?)')); });
+      return new RegExp(op.replace(/[-[\]{}()+?.,\\^$|#\s]/g, "\\$&").replace(/\*/g, '(.*?)'), 'i'); });
   }
 };
 
@@ -47,7 +47,7 @@ Channel.prototype.loadConfig = function () {
 
 Channel.prototype.loadOverrides = function () {
   if (fs.existsSync(this.path + 'customize.js')) {
-    console.log('Loading overrides...');
+    console.log(this.name.green, 'Loading overrides...');
     this.overrides = require(this.path + 'customize'); }
 };
 
@@ -142,15 +142,18 @@ Channel.prototype.registerRoute = function registerRoute(module, name, route) {
 };
 
 Channel.prototype.registerCommand = function registerCommand(module, name, command) {
-  var chan = this, handler = command.handler, checkOp = function checkOp(info, cb) {
+  var chan = this, handler = command.handler;
+
+  function checkOp(info, cb) {
+    console.dir(info);
     if (chan.isOperator(info.hostmask)) {
       console.log('Operator', info.from.green, 'called', name.green);
-      handler.call(module.context, info, cb);
+      handler.call(this, info, cb);
     } else { console.log('Non-Operator', info.from.red, 'tried to call', name.red); }
   };
 
   command.route = new RegExp('^\\' + chan.config.commandPrefix + name + '( |$)', 'i');
-  command.handler = command.op ? checkOp : command.handler;
+  command.handler = command.op ? checkOp : handler;
   command.module = module;  // Save reference to parent module.
   command.name = name;
 
