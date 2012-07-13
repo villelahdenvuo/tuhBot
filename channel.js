@@ -100,7 +100,10 @@ Channel.prototype.handleMessage = function (message) {
           current.name), current.description, chan.config.commandPrefix, cmd.name));
       } else {
         message.hostmask = message.raw.prefix;
+        // Insert default values if any.
         message.args = cmd.args.map(function (a, i) { return args[i] || a.default; });
+        // Add rest of the arguments, if given.
+        message.args.push.apply(message.args, args.slice(cmd.args.length));
         cmd.handler.call(cmd.module.context, message,
           function (out) { output.call(cmd.module.context, cmd, out); });
       } return; // Command executed, nothing to do.
