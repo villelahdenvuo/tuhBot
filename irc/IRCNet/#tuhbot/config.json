@@ -1,9 +1,11 @@
 {
+  "operators": ["tuhoojabotti!*@irkin.tuhoojabotti.com"],
   "commandPrefix": "!",
   "colors": true,
   "modules": {
     "url_title": { "maxLength": 100 },
     "url_size": { "warnSize": 6 },
-    "wiki": {}
+    "wiki": {},
+    "poll": {}
   }
 }
