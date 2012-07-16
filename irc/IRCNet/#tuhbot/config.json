@@ -1,5 +1,8 @@
 {
-  "operators": ["tuhoojabotti!*@irkin.tuhoojabotti.com"],
+  "operators": [
+    "tuhoojabotti!*@irkin.tuhoojabotti.com",
+    "Wing!wing@hilla.kapsi.fi"
+  ],
   "commandPrefix": "!",
   "colors": true,
   "modules": {
@@ -8,15 +11,8 @@
     "wiki": {},
     "poll": {},
     "rss": {
-      "feeds": [
-        {
-          "name": "reddit r/kpop",
-          "prefix": "k-pop: ",
-          "url": "http://www.reddit.com/r/kpop/new.rss?sort=new",
-          "updateInterval": 30,
-          "spamInterval": 3
-        }
-      ]
-    }
+      "feeds": []
+    },
+    "replace": {}
   }
 }
