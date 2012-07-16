@@ -2,6 +2,16 @@
 
 var request = require('request');
 
+function shorten(url, cb) {
+  // Custom shortener for reddit links.
+  var reddit = url.match(/(?:reddit\.com\/r\/\w+\/comments|redd\.it)\/(\w+)/i);
+  if (reddit) {
+    cb(null, 'http://redd.it/' + reddit[1]);
+  } else {
+    urly(url, cb);
+  }
+}
+
 function urly(url, cb) {
   function UrlyError(e) {
     this.name = "UrlyError";
@@ -18,4 +28,4 @@ function urly(url, cb) {
   );
 }
 
-module.exports = urly;
+module.exports = shorten;
