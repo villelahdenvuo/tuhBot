@@ -10,9 +10,9 @@
     "url_size": { "warnSize": 6 },
     "wiki": {},
     "poll": {},
+    "replace": {},
     "rss": {
       "feeds": []
-    },
-    "replace": {}
+    }
   }
 }

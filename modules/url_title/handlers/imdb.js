@@ -14,12 +14,14 @@ function handler(matches, cb) {
 }
 
 function formatter(i) {
+  function NA(s) { return s !== 'N/A' ? ' - ' + s : ''; }
   var r = parseFloat(i.imdbRating, 10)
     , color = r <= 5 ? 'light_red' :
-              r <= 7.5 ? 'yellow' : 'light_green';
+              r <= 7.5 ? 'yellow' : 'light_green'
+    , plot = NA(i.Plot), rated = NA(i.Rated);
 
-  return format('%s (%s) - %s [%s - %s/10]', c('gray', i.Title), i.Year,
-    i.Plot, i.Runtime, c(color, r.toFixed(1)));
+  return format('%s (%s)%s [%s - %s/10%s]', c('gray', i.Title), i.Year,
+    plot, i.Runtime, c(color, r.toFixed(1)), rated);
 }
 
 module.exports = {
