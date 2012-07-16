@@ -39,7 +39,7 @@ Channel.prototype.init = function () {
 Channel.prototype.loadConfig = function () {
   try { this.config = JSON.parse(fs.readFileSync(this.path + 'config.json')); }
   catch(e) { // Try default config
-    console.error(e.stack);
+    console.log(this.name.yellow, 'Failed to load config, falling back to default.');
     try { this.config = JSON.parse(fs.readFileSync(__dirname + '/default_channel_config.json')); }
     catch(e) { console.log('Failed to load default channel config!\n%s', e.stack); process.exit(); }
   }
@@ -212,11 +212,12 @@ Channel.prototype.clear = function() {
   var chan = this;
 
   each(chan.modules, function (name, module) {
+    if (module.uninit) { module.uninit.call(module); }
     module.listeners.forEach(function (listener) {
       console.log('removing listener for', listener[0]);
       chan.network.removeListener(listener[0], listener[1]);
     });
-    module.timers.forEach(clearTimeout);
+    module.timers.forEach(clearInterval);
   });
   this.routes = [];
   this.commands = [];
