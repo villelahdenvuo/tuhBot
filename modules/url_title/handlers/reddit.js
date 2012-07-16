@@ -38,18 +38,6 @@ function formatter(i) {
     c('yellow', i.score), c('yellow', i.num_comments), nsfw);
 }
 
-function secondsToTime(secs) {
-  var hours = Math.floor(secs / (60 * 60));
-
-  var divisor_for_minutes = secs % (60 * 60);
-  var minutes = Math.floor(divisor_for_minutes / 60);
-
-  var divisor_for_seconds = divisor_for_minutes % 60;
-  var seconds = Math.ceil(divisor_for_seconds);
-
-  return {"h": hours, "m": minutes, "s": seconds};
-}
-
 module.exports = {
   route: /(reddit\.com\/r\/\w+\/comments|redd\.it)\/(\w+)/,
   help: 'A route for Reddit urls.',

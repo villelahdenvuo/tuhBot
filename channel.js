@@ -112,9 +112,9 @@ Channel.prototype.handleMessage = function (message) {
 
   chan.routes.forEach(function (r) {
     if (message.text.match(r.route)) {
-      r.handler.call(r.module.context,
-        { from: message.from, message: message.text
-        , hostmask: message.raw.prefix, matches: message.text.match(r.route) },
+      message.hostmask = message.raw.prefix;
+      message.matches = message.text.match(r.route);
+      r.handler.call(r.module.context, message,
         function (out) { output.call(r.module.context, r, out); });
     };
   });

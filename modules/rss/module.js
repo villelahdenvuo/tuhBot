@@ -12,7 +12,7 @@ var RSS = {
   description: 'spams RSS to channel',
        author: 'Ville "tuhoojabotti" Lahdenvuo',
       contact: 'tuhoojabotti at gmail or IRCNet',
-      version: '0.1',
+      version: '0.5',
          init: initRSS,
        uninit: uninitRSS
 };
@@ -38,12 +38,12 @@ function initFeed(conf) {
          help: 'Spams RSS data',
       handler: function (o) {
         var a = feed.getArticle();
-        if (a) {
-          shorten(a.link, function (err, url) {
-            if (err) { return; }
-            a.link = url;
-            o(a);
-          });}
+        if (!a) { return; }
+        shorten(a.link, function (err, url) {
+          if (err) { return; }
+          a.link = url;
+          o(a);
+        });
       },
     formatter: formatArticle
   };
