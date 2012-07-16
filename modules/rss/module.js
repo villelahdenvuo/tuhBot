@@ -1,6 +1,11 @@
 'use strict';
 
-var rssee = require('rssee');
+var RSSReader = require('./rss')
+  , moment = require('moment')
+  , format = require('util').format
+  , shorten = require('../shorturl');
+
+function each(i, o, c) { if(i) {Object.keys(i).forEach(function (n) { o.call(c, n, i[n]); });} }
 
 var RSS = {
          name: 'RSS',
@@ -8,43 +13,44 @@ var RSS = {
        author: 'Ville "tuhoojabotti" Lahdenvuo',
       contact: 'tuhoojabotti at gmail or IRCNet',
       version: '0.1',
-         init: initRSS
+         init: initRSS,
+       uninit: uninitRSS
 };
 
 function initRSS() {
-  var feeds = this.context.config.feeds;
+  var context = this.context;
   this.intervals = {};
-  this.context.queue = {};
-  this.context.feeds = {};
-  feeds.forEach(initFeed, this);
+  context.feeds = {};
+  context.config.feeds.forEach(initFeed, this);
 }
 
 function initFeed(conf) {
-  var queue = this.context.queue[conf.name] = [];
+  var feed = this.context.feeds[conf.name] = new RSSReader(conf.url, conf.updateInterval * 1000);
 
-  // Start checking
-  var feed = this.context.feeds[conf.name] =
-    rssee.create({interval:conf.interval, ignore_first_run: false});
-
-  feed.on('article', function onArticle(a) {
-    console.dir(a);
-    console.log('got an article!');
-    queue.push(a);
-  })
-
-  feed.start(conf.url);
-  console.log('Started feed', feed)
+  function formatArticle(a) {
+    return format('%s%s %s',
+     conf.prefix, a.title, a.link);
+  }
 
   this.intervals[conf.name] = {
          name: conf.name,
-     interval: conf.interval * 1000,
+     interval: conf.spamInterval * 1000,
          help: 'Spams RSS data',
       handler: function (o) {
-        var item = this.queue[conf.name].shift();
-        if (item) { o(item) };
+        var a = feed.getArticle();
+        if (a) {
+          shorten(a.link, function (err, url) {
+            if (err) { return; }
+            a.link = url;
+            o(a);
+          });}
       },
-    formatter: function (i) { console.dir(i); }
+    formatter: formatArticle
   };
+}
+
+function uninitRSS() {
+  each(this.context.feeds, function (name, feed) { console.log('Stopping feed', name); feed.stop(); });
 }
 
 function rss_command(info, cb) {

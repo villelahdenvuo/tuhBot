@@ -1,11 +1,11 @@
 'use strict';
 
 var Test = {
-         name: 'Test',
-  description: 'demonstrates how to make modules',
-       author: 'Ville "tuhoojabotti" Lahdenvuo',
-      contact: 'tuhoojabotti at gmail or IRCNet',
-      version: '1.33.7'
+         name: 'Test',                              // any descriptive name
+  description: 'demonstrates how to make modules',  // "what it does" lowercase and no trailing dot
+       author: 'Ville "tuhoojabotti" Lahdenvuo',    // author information, nickname is fine
+      contact: 'tuhoojabotti at gmail or IRCNet',   // contact information, you know, for support
+      version: '1.33.7'                             // version string
 };
 
 //--v WORKING STUFF v--//

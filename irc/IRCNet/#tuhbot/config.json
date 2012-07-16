@@ -6,6 +6,17 @@
     "url_title": { "maxLength": 100 },
     "url_size": { "warnSize": 6 },
     "wiki": {},
-    "poll": {}
+    "poll": {},
+    "rss": {
+      "feeds": [
+        {
+          "name": "reddit r/kpop",
+          "prefix": "k-pop: ",
+          "url": "http://www.reddit.com/r/kpop/new.rss?sort=new",
+          "updateInterval": 30,
+          "spamInterval": 3
+        }
+      ]
+    }
   }
 }
