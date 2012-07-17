@@ -153,7 +153,6 @@ Channel.prototype.registerCommand = function registerCommand(module, name, comma
   var chan = this, handler = command.handler;
 
   function checkOp(info, cb) {
-    console.dir(info);
     if (chan.isOperator(info.hostmask)) {
       console.log('Operator', info.from.green, 'called', name.green);
       handler.call(this, info, cb);
