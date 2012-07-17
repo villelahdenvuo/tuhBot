@@ -6,7 +6,12 @@
   "commandPrefix": "!",
   "colors": true,
   "modules": {
-    "url_title": { "maxLength": 100 },
+    "url_title": {
+      "maxLength": 100,
+      "handlers": {
+        "soundcloud": { "client_id": "dd5fd6ef1aedfadb873f0133161f9290" }
+      }
+    },
     "url_size": { "warnSize": 6 },
     "wiki": {},
     "poll": {},
