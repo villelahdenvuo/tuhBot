@@ -1,7 +1,11 @@
 #################
 ## Custom
 #################
-node_modules
+node_modules/*
+
+# Allow custom node-irc
+!node_modules/irc/
+
 
 #################
 ## Eclipse
