@@ -6,11 +6,12 @@ var fs = require('fs')
   , Channel = require('./channel')
   , util = require('util')
   , _ = require('underscore')
-  , readline = require('readline');
+  , readline = require('readline')
+  , log = require('./log');
 
 function Core() {
   this.networks = {};
-
+  this.log = new log('Core', __dirname + 'core.log');
   this.channel = new CoreChannel(this);
 
   this.loadNetworks();
@@ -42,6 +43,7 @@ Core.prototype.networkMessage = function (network, msg) {
   }
 
   if (msg.type == 'message' || msg.type == 'message#') {
+    core.log.msg(network, msg);
     var reply = function reply(message) {
       core.say(network, msg.args[1], message);
     }
@@ -86,19 +88,13 @@ function CoreChannel(core) {
 }
 util.inherits(CoreChannel, Channel);
 
-process.on('uncaughtException', function (err) {
-  console.error('%s Core catched error at the very last minute!', 'ERROR'.red);
-  console.log(err.stack);
-});
-
 // Create a new bot.
 var bot = new Core();
 
-function exit() {
-  console.log('Core received SIGINT');
-  bot.exit();
-}
+process.on('uncaughtException', bot.log.exception);
 
 var rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-rl.on('SIGINT', exit);
-
+rl.on('SIGINT', function () {
+  console.log('Core received SIGINT');
+  bot.exit();
+});

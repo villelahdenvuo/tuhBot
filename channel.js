@@ -4,7 +4,8 @@ var colors = require('colors')
   , util = require('util')
   , fs = require('fs')
   , cw = require('irc').colors.wrap
-  , builtins = require('./builtins');
+  , builtins = require('./builtins')
+  , log = require('./log');
 
 function each(i, o, c) { if(i) {Object.keys(i).forEach(function (n) { o.call(c, n, i[n]); });} }
 
@@ -12,6 +13,7 @@ function Channel(network, name) {
   this.allowedEvents = ['join', 'part', '+mode', '-mode'];
   this.path = process.cwd() + '/' + name.toLowerCase() + '/';
   this.modulePath = __dirname + '/modules/';
+  this.log = new log(name, this.path + 'channel.log');
   this.isCore = false;
   this.network = network;
   this.name = name;
@@ -25,12 +27,13 @@ function Channel(network, name) {
 }
 
 Channel.prototype.init = function () {
-  this.loadConfig();
+  if (!this.loadConfig()) { return; }
   this.loadOverrides();
   this.initModules();
   builtins(this);
 
   if (this.config.operators) {
+    this.log.debug('Loading operators', this.config.operators);
     this.operators = this.config.operators.map(function (op) {
       return new RegExp(op.replace(/[-[\]{}()+?.,\\^$|#\s]/g, "\\$&").replace(/\*/g, '(.*?)'), 'i'); });
   }
@@ -39,36 +42,41 @@ Channel.prototype.init = function () {
 Channel.prototype.loadConfig = function () {
   try { this.config = JSON.parse(fs.readFileSync(this.path + 'config.json')); }
   catch(e) { // Try default config
-    console.log(this.name.yellow, 'Failed to load config, falling back to default.');
+    this.log.info('Failed to load config, falling back to default.');
     try { this.config = JSON.parse(fs.readFileSync(__dirname + '/default_channel_config.json')); }
-    catch(e) { console.log('Failed to load default channel config!\n%s', e.stack); process.exit(); }
+    catch(e) { this.log.exception(e); return false; }
   }
+  return true;
 };
 
 Channel.prototype.loadOverrides = function () {
-  if (fs.existsSync(this.path + 'customize.js')) {
-    console.log(this.name.green, 'Loading overrides...');
-    this.overrides = require(this.path + 'customize'); }
+  if (!fs.existsSync(this.path + 'customize.js')) { return; }
+  this.log.info('Loading overrides');
+  this.overrides = require(this.path + 'customize');
 };
 
 Channel.prototype.initModules = function () {
   var chan = this;
 
-  function each(i, o, c) { if(i) {Object.keys(i).forEach(function (n) { o.call(c, n, i[n]); });} }
-
   function initModule(name, config) {
-    console.log(chan.name.green, 'Loading module', name.green, config);
+    chan.log.info('Loading module', {name: name, config: config});
     // Load module or override.
-    var module = chan.modules[name] = chan.overrides[name] ?
-      chan.overrides[name] : require(chan.modulePath + name + '/module');
+    try { var module = chan.modules[name] = chan.overrides[name] ?
+            chan.overrides[name] : require(chan.modulePath + name + '/module'); }
+    catch(e) { chan.log.exception(e, 'Loading module failed'); }
+
     module.listeners = [];
     module.timers = [];
     module.context = {
       io: chan.io,
-      config: config
+      config: config,
+      log: new log(name, chan.modulePath + name + '/module.log')
     };
     // If the module requires special initialization, let's do it here.
-    if (module.init) { module.init.call(module); }
+    if (module.init) {
+      try { module.init.call(module); }
+      catch (e) { chan.log.exception(e, 'Module init failed'); }
+    }
     // Register commands/routes/events etc.
     each(module.routes, function (n, route) { chan.registerRoute(module, n, route); }, chan);
     each(module.commands, function (n, cmd) { chan.registerCommand(module, n, cmd); }, chan);
@@ -174,7 +182,7 @@ Channel.prototype.registerEvent = function registerEvent(module, name, event) {
   };
 
   if (chan.allowedEvents.indexOf(name) === -1) {
-    console.log('Module tried to bind unsafe event:', name.red);
+    chan.log.debug('Module tried to bind unsafe event', {name: module.name, event: event});
     return;
   }
 
@@ -214,7 +222,6 @@ Channel.prototype.clear = function() {
   each(chan.modules, function (name, module) {
     if (module.uninit) { module.uninit.call(module); }
     module.listeners.forEach(function (listener) {
-      console.log('removing listener for', listener[0]);
       chan.network.removeListener(listener[0], listener[1]);
     });
     module.timers.forEach(clearInterval);

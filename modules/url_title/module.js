@@ -1,6 +1,7 @@
 'use strict';
 
-var fs = require('fs');
+var fs = require('fs')
+  , colors = require('colors');
 
 var URLTitle = {
          name: 'URLTitle',
@@ -12,49 +13,53 @@ var URLTitle = {
 };
 
 function init() {
-  var handlerFiles = fs.readdirSync(__dirname + '/handlers/');
-
-  this.context.handlers = {};
-  handlerFiles.forEach(function function_name (file, i) {
-    var jsLoc = file.lastIndexOf('.js');
-    if (jsLoc !== -1) {
-      file = file.substr(0, jsLoc);
-      this.context.handlers[file] = require(__dirname + '/handlers/' + file);
-    }
+  var handlers = this.context.handlers = {};
+  fs.readdirSync(__dirname + '/handlers/').forEach(function eachFile(file) {
+    var ext = file.lastIndexOf('.js');
+    if (ext === -1) { return; }
+    file = file.substr(0, ext);   // Remove file extension.
+    handlers[file] = require(__dirname + '/handlers/' + file);
   }, this);
 }
 
 function handler(info, cb) {
-  var url = info.matches[0]
-    , context = this
+  var url = info.matches[0], context = this
     , handlerNames = Object.keys(context.handlers);
 
-  // Loop through every handler and try to match them before
+  // Loop through handlers for a match before
   // falling back to the generic handler.
-  for (var i = 0; i < handlerNames.length; i++) {
+  for (var i in handlerNames) {
     var handler = context.handlers[handlerNames[i]]
       , matches = url.match(handler.route);
 
     if (matches) {
-      handler.handler.call(context, matches, function (i) {
-        cb(handler.formatter.call(context, i));
+      context.log.debug('Found a matching handler for url', {
+        url: url,
+        handler: handlerNames[i]
       });
-      return; // We're done here.
+      callHandler(handler, context, matches, cb);
+      return; // Found a matching handler, we're done.
     }
   }
 
+  context.log.debug('Falling back to generic url handler.', {url: url});
   // Did not find a special handler, use the generic one.
-  var genericHandler = require('./generic');
+  callHandler(require('./generic'), context, url, cb);
+}
 
-  genericHandler.handler.call(context, url, function (i) {
-    cb(genericHandler.formatter.call(context, i));
-  });
+function callHandler(handler, context, matches, cb) {
+  function onHandlerDone(i) {
+    try { cb(handler.formatter.call(context, i)); }
+    catch (e) { context.log.exception(e); }
+  }
+  try { handler.handler.call(context, matches, onHandlerDone); }
+  catch (e) { context.log.exception(e); }
 }
 
 function formatter(i) {
   if (!i) { return; }
   return i                        // Sanitize output
-    .replace(/\n/g, ' ')          // Obliterate line changes
+    .replace(/\n|\t/g, ' ')       // Obliterate line changes and tabs
     .replace(/[ ]{2,}/g, ' ');    // Remove multiple spaces
 }
 
