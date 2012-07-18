@@ -16,7 +16,8 @@ var Poll = {
        author: 'Ville "tuhoojabotti" Lahdenvuo',
       contact: 'tuhoojabotti at gmail or IRCNet',
       version: '1.0',
-         init: function () { reset(this.context.poll = {}); }
+         init: function () { reset(this.context.poll = {}); }, // Reseting an empty poll inits it.
+       uninit: function () { reset(this.context.poll); }       // To reset timeout on uninit.
 };
 
 function reset(poll) {
