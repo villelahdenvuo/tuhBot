@@ -12,7 +12,8 @@ var Wiki = {
 };
 
 function search(info, cb) {
-  var q = info.text.split(' ').splice(1) || []
+  console.dir(info.args);
+  var q = info.args || []
     , nugget = q[0] == 'nugget' ? q.splice(0, 1)[0] == 'nugget' : false
     , lang = q[0] && q[0].length == 2 ? q.splice(0, 1)[0] : 'en'
     , api = 'http://' + lang + '.wikipedia.org/w/api.php?action=query&list=search'

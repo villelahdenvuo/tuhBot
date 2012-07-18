@@ -40,34 +40,6 @@ function initBuiltins(chan) {
     handler: function (i, o) { o(i.args[0]); },
     formatter: getHelp
   });
-
-
-  //  _______  _______  _______  _______    _______ _________          _______  _______
-  // (  ____ \(  ___  )(  ____ )(  ____ \  (  ____ \\__   __/|\     /|(  ____ \(  ____ \
-  // | (    \/| (   ) || (    )|| (    \/  | (    \/   ) (   | )   ( || (    \/| (    \/
-  // | |      | |   | || (____)|| (__      | (_____    | |   | |   | || (__    | (__
-  // | |      | |   | ||     __)|  __)     (_____  )   | |   | |   | ||  __)   |  __)
-  // | |      | |   | || (\ (   | (              ) |   | |   | |   | || (      | (
-  // | (____/\| (___) || ) \ \__| (____/\  /\____) |   | |   | (___) || )      | )
-  // (_______/(_______)|/   \__/(_______/  \_______)   )_(   (_______)|/       |/
-
-  if (!chan.isCore) { return; }
-
-  /////////////////////////////////////////////////////////////////// REHASH //
-  ////////////////////////////////////////////////////////////////////////////
-
-  chan.registerCommand({context: {io: chan.io}}, 'rehash', {
-    op: true,
-    help: 'Reload modules.',
-    args: [{name: 'silent', description: 'No spamming', default: 'false'}],
-    handler: function (i, o) {
-      var nets = this.io.core.networks;
-      each(nets, function (net) {
-        nets[net].send({type: 'rehash', silent: (i.args[0] !== 'false')});
-      });
-      chan.rehash(); // Also rehash core channel.
-    }
-  });
 }
 
 module.exports = initBuiltins;

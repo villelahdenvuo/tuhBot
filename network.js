@@ -4,6 +4,7 @@ var colors = require('colors')
   , async = require('async')
   , util = require('util')
   , irc = require('irc').Client
+  , log = require('./log')
   , fs = require('fs');
 
 var Channel = require('./channel');
@@ -16,6 +17,7 @@ function Network(name) {
   this.name = name;
 
   console.log('%s process starting up...', name.green);
+  this.log = new log(name, process.cwd() + '/network.log');
   this.loadConfig();
   this.loadChannels();
   this.bindEvents();
@@ -26,7 +28,12 @@ function Network(name) {
 util.inherits(Network, irc);
 
 Network.prototype.loadConfig = function () {
-  this.config = JSON.parse(fs.readFileSync(process.cwd() + '/config.json'));
+  try {
+    this.config = JSON.parse(fs.readFileSync(process.cwd() + '/config.json'));
+  } catch(e) {
+    console.error(this.name.red, 'Failed to load config.');
+    this.log.exception(e, 'Network ' + name + ' failed to load config.');
+  }
 };
 
 Network.prototype.loadChannels = function () {
@@ -124,16 +131,21 @@ Network.prototype.listenMaster = function (msg) {
 
 Network.prototype.initChannel = function (name) {
   var net = this, channel = net.channelHandles[name] = new Channel(net, name);
-  channel.init();
-  channel.listener = function (from, message, raw) {
-    channel.handleMessage.call(channel,
-      {from: from, text: message, raw: raw, reply: reply});
-  };
+  if (!channel.init()) {
+    this.log.warning('Initializing of channel ' + name + ' failed.')
+    delete net.channelHandles[name];
+    return;
+  }
 
   function reply(msg) {
     net.say(name, channel.config.colors ?
       msg : msg.replace(/[\x02\x1f\x16\x0f]|\x03\d{0,2}(?:,\d{0,2})?/g, ''));
   }
+
+  channel.listener = function (from, message, raw) {
+    channel.handleMessage.call(channel,
+      {from: from, text: message, raw: raw, reply: reply});
+  };
 
   net.on('message' + name, channel.listener);
 };

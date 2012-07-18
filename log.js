@@ -61,6 +61,15 @@ Log.prototype.msg = function(net, o) {
   this.write(msg);
 };
 
+Log.prototype.warning = function(text, o) {
+  var msg = {type: 'info', level: 3, timestamp: Date.now()};
+
+  msg.warning = text;
+  msg.details = o;
+
+  this.write(msg);
+}
+
 Log.prototype.exception = function(e, text) {
   var msg = {type: 'exception', level: 5, timestamp: Date.now()};
 

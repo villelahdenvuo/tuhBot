@@ -8,7 +8,7 @@ var URLTitle = {
   description: 'looks for links in messages and spews out information about them',
        author: 'Ville "tuhoojabotti" Lahdenvuo',
       contact: 'tuhoojabotti at gmail or IRCNet',
-      version: '1.3.1',
+      version: '1.6.2',
          init: init
 };
 
@@ -19,7 +19,7 @@ function init() {
     if (ext === -1) { return; }
     file = file.substr(0, ext);   // Remove file extension.
     handlers[file] = require(__dirname + '/handlers/' + file);
-  }, this);
+  });
 }
 
 function handler(info, cb) {

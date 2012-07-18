@@ -10,7 +10,7 @@ var colors = require('colors')
 function each(i, o, c) { if(i) {Object.keys(i).forEach(function (n) { o.call(c, n, i[n]); });} }
 
 function Channel(network, name) {
-  this.allowedEvents = ['join', 'part', '+mode', '-mode'];
+  this.allowedEvents = ['join', 'part', '+mode', '-mode', 'pm'];
   this.path = process.cwd() + '/' + name.toLowerCase() + '/';
   this.modulePath = __dirname + '/modules/';
   this.log = new log(name, this.path + 'channel.log');
@@ -27,16 +27,17 @@ function Channel(network, name) {
 }
 
 Channel.prototype.init = function () {
-  if (!this.loadConfig()) { return; }
+  if (!this.loadConfig()) { return false; }
   this.loadOverrides();
   this.initModules();
-  builtins(this);
+  builtins(this); // TODO: Make builtins better.
 
   if (this.config.operators) {
     this.log.debug('Loading operators', this.config.operators);
     this.operators = this.config.operators.map(function (op) {
       return new RegExp(op.replace(/[-[\]{}()+?.,\\^$|#\s]/g, "\\$&").replace(/\*/g, '(.*?)'), 'i'); });
   }
+  return true; // Success
 };
 
 Channel.prototype.loadConfig = function () {
@@ -60,10 +61,15 @@ Channel.prototype.initModules = function () {
 
   function initModule(name, config) {
     chan.log.info('Loading module', {name: name, config: config});
-    // Load module or override.
-    try { var module = chan.modules[name] = chan.overrides[name] ?
-            chan.overrides[name] : require(chan.modulePath + name + '/module'); }
-    catch(e) { chan.log.exception(e, 'Loading module failed'); }
+
+    try { // Load module or override.
+      var module = chan.modules[name] = chan.overrides[name] ?
+        chan.overrides[name] : require(chan.modulePath + name + '/module');
+    } catch(e) {
+      chan.log.exception(e, 'Loading module failed');
+      delete chan.modules[name];
+      return;
+    }
 
     module.listeners = [];
     module.timers = [];
@@ -72,10 +78,16 @@ Channel.prototype.initModules = function () {
       config: config,
       log: new log(name, chan.modulePath + name + '/module.log')
     };
+
     // If the module requires special initialization, let's do it here.
     if (module.init) {
-      try { module.init.call(module); }
-      catch (e) { chan.log.exception(e, 'Module init failed'); }
+      try {
+        module.init.call(module);
+      } catch (e) {
+        chan.log.exception(e, 'Module init failed');
+        delete chan.modules[name];
+        return;
+      }
     }
     // Register commands/routes/events etc.
     each(module.routes, function (n, route) { chan.registerRoute(module, n, route); }, chan);
@@ -84,15 +96,31 @@ Channel.prototype.initModules = function () {
     each(module.intervals, function (n, intv) { chan.registerInterval(module, n, intv); }, chan);
   }
 
-  // Initialize modules
+  // Initialize all modules.
   each(this.config.modules, initModule);
 };
 
 Channel.prototype.handleMessage = function (message) {
-  var chan = this, cmd, output = function output (route, out) {
-    try { message.reply(route.formatter.call(this, out)); }
-    catch (err) { console.error('%s Module %s formatter failed!\n%s',
-      'ERROR'.red, route.name, err.stack); }
+  var chan = this, cmd;
+
+  message.hostmask = message.raw.prefix;
+
+  function handle(route, data) {
+    var context = route.module.context;
+
+    function format(out) {
+      try { message.reply(route.formatter.call(context, out)); }
+      catch (e) {
+        console.error('%s Module %s formatter failed!', 'ERROR'.red, route.name);
+        chan.log.exception(e, 'Module ' + route.name + ' formatter failed');
+      }
+    }
+
+    try { route.handler.call(context, data, format); }
+    catch (e) {
+       console.error('%s Module %s handler failed!', 'ERROR'.red, route.name);
+       chan.log.exception(e, 'Module ' + route.name + ' handler failed');
+    }
   }
 
   for (var i in chan.commands) { cmd = chan.commands[i];
@@ -101,29 +129,26 @@ Channel.prototype.handleMessage = function (message) {
         // Parse arguments `!help lol "hello world: "` -> ['lol', 'hello world: ']
         var args = (message.text.match(/([^\s]*"[^"]+"[^\s]*)|([^ ]+)/g) || [])
           .splice(1).map(function (s) { return s.replace(/^"(.+?)"$/, '$1') })
-        , current = cmd.args && cmd.args[args.length];
+        , current = cmd.args[args.length];
 
       if (current && !current.default) { // Missing an argument that doesn't have a default.
         message.reply(util.format("You are missing %s: %s. See `%shelp %s`", cw('light_red',
           current.name), current.description, chan.config.commandPrefix, cmd.name));
       } else {
-        message.hostmask = message.raw.prefix;
-        // Insert default values if any.
-        message.args = cmd.args.map(function (a, i) { return args[i] || a.default; });
-        // Add rest of the arguments, if given.
-        message.args.push.apply(message.args, args.slice(cmd.args.length));
-        cmd.handler.call(cmd.module.context, message,
-          function (out) { output.call(cmd.module.context, cmd, out); });
-      } return; // Command executed, nothing to do.
+        // Insert default values if needed.
+        message.args = cmd.args.map(function (a, i) { return args[i] || a.default; })
+          .concat(args.slice(cmd.args.length));
+
+        handle(cmd, message);
+      }
+      return; // Command executed, nothing else to do here.
     };
   }
 
   chan.routes.forEach(function (r) {
     if (message.text.match(r.route)) {
-      message.hostmask = message.raw.prefix;
       message.matches = message.text.match(r.route);
-      r.handler.call(r.module.context, message,
-        function (out) { output.call(r.module.context, r, out); });
+      handle(r, message);
     };
   });
 };

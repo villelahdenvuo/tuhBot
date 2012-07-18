@@ -1,5 +1,7 @@
 'use strict';
 
+function each(i, o, c) { if(i) {Object.keys(i).forEach(function (n) { o.call(c, n, i[n]); });} }
+
 var Control = {
          name: 'Control',
   description: 'Core module to control the bot.',
@@ -21,6 +23,18 @@ Control.commands = {
        help: 'Make the bot exit a channel.',
     handler: function (i) {
       this.io.send(i.net, ['PART', i.args[0] === 'current' ? i.channel : i.args[0]]);
+    }
+  },
+  'rehash' : {
+         op: true,
+       help: 'Reload modules.',
+       args: [{name: 'silent', description: 'No spamming', default: 'false'}],
+    handler: function (i) {
+      var nets = this.io.core.networks;
+      each(nets, function (name, net) {
+        net.send({type: 'rehash', silent: (i.args[0] !== 'false')});
+      });
+      this.io.channel.rehash(); // Also rehash core channel.
     }
   }
 };
