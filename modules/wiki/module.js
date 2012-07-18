@@ -12,7 +12,6 @@ var Wiki = {
 };
 
 function search(info, cb) {
-  console.dir(info.args);
   var q = info.args || []
     , nugget = q[0] == 'nugget' ? q.splice(0, 1)[0] == 'nugget' : false
     , lang = q[0] && q[0].length == 2 ? q.splice(0, 1)[0] : 'en'
@@ -76,7 +75,6 @@ function clean(str) {
 
 Wiki.commands = {
   'wiki': {
-      command: 'wiki',
            op: false,
          help: 'Searches Wikipedia for a tidbit.',
          args: [{name: 'nugget or query', description: '"nugget" for did you know'},

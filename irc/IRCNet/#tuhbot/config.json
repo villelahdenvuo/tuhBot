@@ -16,6 +16,7 @@
     "wiki": {},
     "poll": {},
     "replace": {},
+    "blacklist": {},
     "rss": {
       "feeds": []
     }
