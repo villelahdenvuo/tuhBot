@@ -82,7 +82,7 @@ function pollFormatter(i) {
 function voteHandler(info, cb) {
   if (!this.poll.running) { return; }
 
-  var selection = parseInt(info.message, 10);
+  var selection = parseInt(info.matches[1], 10);
   // Not a number or out of range.
   if (isNaN(selection) || selection > this.poll.length) { return; }
   // Already voted once.
@@ -108,7 +108,7 @@ Poll.commands = {
 
 Poll.routes = {
   'vote': {
-    route: /^[1-9]/,
+    route: /^([1-9])/,
     help: 'Records votes to polls',
     handler: voteHandler,
     formatter: function voteFormatter(i) { return i + ', you have already voted!'; }
