@@ -57,12 +57,21 @@ Core.prototype.exit = function (message) {
   var core = this;
   // Tell all networks to disconnect and terminate.
   Object.keys(core.networks).forEach(function (net) {
+    core.networks[net].once('exit', function() {
+      core.exitCallback(net);
+    });
     core.networks[net].send({
       type: 'exit',
       message: (message || core.channel.config.quitMessage || "http://git.io/tuhbot")
     });
   });
-  process.exit();
+}
+
+Core.prototype.exitCallback = function (networkId) {
+  delete this.networks[networkId];
+  if (Object.keys(this.networks).length < 1) {
+    process.exit();
+  }
 }
 
 Core.prototype.say = function (net, to, msg) {
@@ -91,10 +100,22 @@ util.inherits(CoreChannel, Channel);
 // Create a new bot.
 var bot = new Core();
 
-process.on('uncaughtException', bot.log.exception);
+process.on('uncaughtException', function (err) {
+  console.error('Process caught an uncaught exception!'.red);
+  console.error(err.stack);
+  //bot.log.exception(err);
+});
 
 var rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+var sigintsReceived = 0;
 rl.on('SIGINT', function () {
-  console.log('Core received SIGINT');
-  bot.exit();
+  sigintsReceived++;
+  console.log('Core received SIGINT'.yellow);
+  if (sigintsReceived === 1) {
+    bot.exit();
+  } else if (sigintsReceived === 2) {
+    console.log('Core is already shutting down!'.red, 'If you want to force exit, send SIGINT again.');
+  } else {
+    process.exit(1);
+  }
 });
