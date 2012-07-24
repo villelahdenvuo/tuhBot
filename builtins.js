@@ -1,5 +1,6 @@
 var format = require('util').format
-  , cw = require('irc').colors.wrap;
+  , cw = require('irc').colors.wrap
+  , log = require('./log');
 
 function each(i, o, c) { if(i) {Object.keys(i).forEach(function (n) { o.call(c, n, i[n]); });} }
 
@@ -32,7 +33,7 @@ function initBuiltins(chan) {
     }
   };
 
-  chan.registerCommand({}, 'help', {
+  chan.registerCommand({context: {log: new log('help', __dirname + '/help.log')}}, 'help', {
     help: 'Shows help about commands. Optional parameters are displayed in square brackets. '
         + 'Use "#" to get information about modules.',
     args: [{name: 'command'

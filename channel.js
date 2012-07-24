@@ -24,14 +24,24 @@ function Channel(network, name) {
   chan.routes = [];
   chan.modules = {};
   chan.overrides = {};
-  chan.io = {
-    isOP: function (host) { return chan.isOperator(host); },
-    kick: function (who, reason) { chan.network.send('KICK', chan.name, who, reason); }
-  };
+  chan.io = {};
 }
 
 Channel.prototype.init = function () {
+  var chan = this;
+
   if (!this.loadConfig()) { return false; }
+
+  function save(cb) {
+    var conf = chan.config;
+    conf.modules[this.name] = this.config;
+    chan.saveConfig(cb);
+  }
+
+  chan.io.isOP = function (host) { return chan.isOperator(host); };
+  chan.io.kick = function (who, reason) { chan.network.send('KICK', chan.name, who, reason); };
+  chan.io.save = save;
+
   this.loadOverrides();
   this.initModules();
   builtins(this); // TODO: Make builtins better.
@@ -41,6 +51,7 @@ Channel.prototype.init = function () {
     this.operators = this.config.operators.map(function (op) {
       return new RegExp(op.replace(/[-[\]{}()+?.,\\^$|#\s]/g, "\\$&").replace(/\*/g, '(.*?)'), 'i'); });
   }
+
   return true; // Success
 };
 
@@ -52,6 +63,18 @@ Channel.prototype.loadConfig = function () {
     catch(e) { this.log.exception(e); return false; }
   }
   return true;
+};
+
+Channel.prototype.saveConfig = function(cb) {
+  console.dir(this.config, this.path);
+
+  try { var confString = JSON.stringify(this.config); }
+  catch (e) {
+    this.log.exception(e, 'Failed to save config.');
+    cb(e);
+  }
+
+  fs.writeFile(this.path + 'config.json', confString, cb);
 };
 
 Channel.prototype.loadOverrides = function () {
@@ -76,7 +99,7 @@ Channel.prototype.initModules = function () {
     }
 
     module.listeners = [];
-    module.timers = [];
+    module.intervalIDs = [];
     module.context = {
       io: chan.io,
       config: config,
@@ -88,6 +111,7 @@ Channel.prototype.initModules = function () {
       try {
         module.init.call(module);
       } catch (e) {
+        console.error('%s Module %s init failed!', 'ERROR'.red, name.yellow);
         chan.log.exception(e, 'Module init failed');
         delete chan.modules[name];
         return;
@@ -111,18 +135,20 @@ Channel.prototype.handleMessage = function (message) {
 
   function handle(route, data) {
     var context = route.module.context;
+    context.log.info('Handling message', message);
 
     function format(out) {
+      context.log.debug('Handler output', out);
       try { message.reply(route.formatter.call(context, out)); }
       catch (e) {
-        console.error('%s Module %s formatter failed!', 'ERROR'.red, route.name);
+        console.error('%s Module %s formatter failed!', 'ERROR'.red, route.name.yellow);
         chan.log.exception(e, 'Module ' + route.name + ' formatter failed');
       }
     }
 
     try { route.handler.call(context, data, format); }
     catch (e) {
-       console.error('%s Module %s handler failed!', 'ERROR'.red, route.name);
+       console.error('%s Module %s handler failed!', 'ERROR'.red, route.name.yellow);
        chan.log.exception(e, 'Module ' + route.name + ' handler failed');
     }
   }
@@ -231,12 +257,11 @@ Channel.prototype.registerEvent = function registerEvent(module, name, event) {
 
 Channel.prototype.registerInterval = function(module, name, intv) {
   var chan = this;
-  var interval= setInterval(function () {
+  module.intervalIDs.push(setInterval(function () {
     intv.handler.call(module.context, function (out) {
       chan.say(intv.formatter(out));
     })
-  }, intv.interval)
-  module.timers.push(interval);
+  }, intv.interval));
 };
 
 Channel.prototype.say = function (msg) {
@@ -248,11 +273,12 @@ Channel.prototype.clear = function() {
   var chan = this;
 
   each(chan.modules, function (name, module) {
+    chan.log.debug('Unloading module', name)
     if (module.uninit) { module.uninit.call(module); }
     module.listeners.forEach(function (listener) {
       chan.network.removeListener(listener[0], listener[1]);
     });
-    module.timers.forEach(clearInterval);
+    module.intervalIDs.forEach(clearInterval);
   });
   this.routes = [];
   this.commands = [];

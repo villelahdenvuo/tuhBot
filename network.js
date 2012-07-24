@@ -155,7 +155,6 @@ Network.prototype.clearChannel = function (name) {
   var channel = this.channelHandles[name];
   this.removeListener('message' + name, channel.listener);
   channel.clear();
-  channel = undefined;
   delete this.channelHandles[name];
 }
 
