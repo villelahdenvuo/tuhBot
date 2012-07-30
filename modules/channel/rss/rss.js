@@ -36,7 +36,8 @@ RSS.prototype.articles = function (err, meta, articles) {
     return false;
   });
 
-  log.debug('RSS: Feed update done, found ' + newArticles.length + ' new articles.', newArticles);
+  log.debug('RSS(' + rss.url + '): Feed update done, found ' + newArticles.length +
+    ' new articles.', newArticles);
 
   if (newArticles.length) {
     // Update last article time so that we won't read them again.

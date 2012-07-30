@@ -1,0 +1,29 @@
+doctype 5
+html(lang="en")
+  head
+    title AssemblyTV WebUI
+    link(rel="stylesheet", media="all", href="assets/main.css")
+    link(rel="stylesheet", media="screen and (min-width: 1024px)", href="assets/big.css")
+    if authenticated
+      script(src="assets/libs.js")
+      script(src="http://hilla.kapsi.fi:61747/socket.io/socket.io.js")
+      script(src="assets/api.js")
+  body
+    unless authenticated
+      h1 You need to log in
+      section(id="login")
+        form(method="post", action="login")
+          label User:
+            input(type="text", size="10", maxlength="40", name="username")
+          label Pass:
+            input(type="password", size="10", name="password")
+          input(type="submit", value="Go")
+    else
+      h1 AssemblyTV
+        span.hide  Control Panel
+      nav Welcome #{user.username}! &ndash;
+        a(href="logout")  logout
+      section#feedback
+        ul
+          each item in feedback
+            li= item

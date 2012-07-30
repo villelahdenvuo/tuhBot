@@ -29,6 +29,11 @@ function Channel(network, name) {
 Channel.prototype.init = function () {
   if (!this.loadConfig()) { return false; }
 
+  // Make sure we have log folder.
+  if (!fs.existsSync(this.path + 'logs/')) {
+    fs.mkdirSync(this.path + 'logs/');
+  }
+
   this.initIO();
   this.loadOverrides();
   this.initModules();
@@ -106,7 +111,7 @@ Channel.prototype.initModules = function () {
     module.context = {
       io: io,
       config: config,
-      log: new log(name, path + name + '/module.log')
+      log: new log(name, chan.path + 'logs/' + name + '.log')
     };
 
     // If the module requires special initialization, let's do it here.
@@ -131,9 +136,7 @@ Channel.prototype.initModules = function () {
   each(this.config.modules, initModule);
 
   // Initialize builtin modules.
-  var io = chan.io;
-  chan.io.channel = chan;
-
+  var io = Object.create(chan.io, {channel: {value: chan}});
   initModule('help', {}, __dirname + '/modules/core/', io);
 };
 

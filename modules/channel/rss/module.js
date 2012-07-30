@@ -12,7 +12,7 @@ var RSS = {
   description: 'spams RSS to channel',
        author: 'Ville "tuhoojabotti" Lahdenvuo',
       contact: 'tuhoojabotti at gmail or IRCNet',
-      version: '0.7',
+      version: '0.8',
          init: initRSS,
        uninit: uninitRSS
 };
@@ -25,6 +25,10 @@ function initRSS() {
 }
 
 function initFeed(conf) {
+  console.log('\n\n');
+  console.dir(this.context);
+  console.log('\n\n');
+
   this.context.log.debug('Starting feed', conf);
   var feed = this.context.feeds[conf.name] = {conf: conf};
   var reader = feed.reader = new RSSReader(conf.url, conf.updateInterval * 1000);
@@ -53,14 +57,17 @@ function initFeed(conf) {
 
 function uninitRSS() {
   each(this.context.feeds, function (name, feed) {
-    this.context.log.debug('Stopping feed', feed.conf);
+    this.log.debug('Stopping feed', feed.conf);
     console.log('Stopping feed', name);
     feed.reader.stop();
-    delete this.context.feeds[name];
-  }, this);
+    delete this.feeds[name];
+  }, this.context);
 }
 
 function rss_command(info, cb) {
+  console.log('\n\n');
+  console.dir(this);
+  console.log('\n\n');
   switch(info.args[0]) {
     case 'help':
       cb(RSS.getHelp(info.args[1]));
