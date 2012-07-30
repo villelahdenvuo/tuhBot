@@ -4,7 +4,7 @@ var request = require('request')
   , format = require('util').format
   , c = require('irc').colors.wrap
   , moment = require('moment')
-  , urly = require('../../shorturl');
+  , urly = require('../../../common/shorturl');
 
 function handler(matches, cb) {
   request({

@@ -4,7 +4,6 @@ var colors = require('colors')
   , util = require('util')
   , fs = require('fs')
   , cw = require('irc').colors.wrap
-  , builtins = require('./builtins')
   , log = require('./log');
 
 function each(i, o, c) { if(i) {Object.keys(i).forEach(function (n) { o.call(c, n, i[n]); });} }
@@ -13,7 +12,7 @@ function Channel(network, name) {
   var chan = this;
   chan.allowedEvents = ['join', 'part', '+mode', '-mode', 'pm'];
   chan.path = process.cwd() + '/' + name.toLowerCase() + '/';
-  chan.modulePath = __dirname + '/modules/';
+  chan.modulePath = __dirname + '/modules/channel/';
   chan.log = new log(name, chan.path + 'channel.log');
   chan.isCore = false;
   chan.network = network;
@@ -28,10 +27,23 @@ function Channel(network, name) {
 }
 
 Channel.prototype.init = function () {
-  var chan = this;
-
   if (!this.loadConfig()) { return false; }
 
+  this.initIO();
+  this.loadOverrides();
+  this.initModules();
+
+  if (this.config.operators) {
+    this.log.debug('Loading operators', this.config.operators);
+    this.operators = this.config.operators.map(function (op) {
+      return new RegExp(op.replace(/[-[\]{}()+?.,\\^$|#\s]/g, "\\$&").replace(/\*/g, '(.*?)'), 'i'); });
+  }
+
+  return true; // Success
+};
+
+Channel.prototype.initIO = function () {
+  var chan = this;
   function save(cb) {
     var conf = chan.config;
     conf.modules[this.name] = this.config;
@@ -41,18 +53,6 @@ Channel.prototype.init = function () {
   chan.io.isOP = function (host) { return chan.isOperator(host); };
   chan.io.kick = function (who, reason) { chan.network.send('KICK', chan.name, who, reason); };
   chan.io.save = save;
-
-  this.loadOverrides();
-  this.initModules();
-  builtins(this); // TODO: Make builtins better.
-
-  if (this.config.operators) {
-    this.log.debug('Loading operators', this.config.operators);
-    this.operators = this.config.operators.map(function (op) {
-      return new RegExp(op.replace(/[-[\]{}()+?.,\\^$|#\s]/g, "\\$&").replace(/\*/g, '(.*?)'), 'i'); });
-  }
-
-  return true; // Success
 };
 
 Channel.prototype.loadConfig = function () {
@@ -86,12 +86,15 @@ Channel.prototype.loadOverrides = function () {
 Channel.prototype.initModules = function () {
   var chan = this;
 
-  function initModule(name, config) {
+  function initModule(name, config, path, extraIO) {
+    var path = path || chan.modulePath
+      , io = extraIO || chan.io;
+
     chan.log.info('Loading module', {name: name, config: config});
 
     try { // Load module or override.
       var module = chan.modules[name] = chan.overrides[name] ?
-        chan.overrides[name] : require(chan.modulePath + name + '/module');
+        chan.overrides[name] : require(path + name + '/module');
     } catch(e) {
       chan.log.exception(e, 'Loading module failed');
       delete chan.modules[name];
@@ -101,9 +104,9 @@ Channel.prototype.initModules = function () {
     module.listeners = [];
     module.intervalIDs = [];
     module.context = {
-      io: chan.io,
+      io: io,
       config: config,
-      log: new log(name, chan.modulePath + name + '/module.log')
+      log: new log(name, path + name + '/module.log')
     };
 
     // If the module requires special initialization, let's do it here.
@@ -124,8 +127,14 @@ Channel.prototype.initModules = function () {
     each(module.intervals, function (n, intv) { chan.registerInterval(module, n, intv); }, chan);
   }
 
-  // Initialize all modules.
+  // Initialize all user modules.
   each(this.config.modules, initModule);
+
+  // Initialize builtin modules.
+  var io = chan.io;
+  chan.io.channel = chan;
+
+  initModule('help', {}, __dirname + '/modules/core/', io);
 };
 
 Channel.prototype.handleMessage = function (message) {
@@ -135,7 +144,11 @@ Channel.prototype.handleMessage = function (message) {
 
   function handle(route, data) {
     var context = route.module.context;
-    context.log.info('Handling message', message);
+    context.log.info('Handling message', {
+      message: message,
+      handler: route.name,
+      module: route.module.name
+    });
 
     function format(out) {
       context.log.debug('Handler output', out);
@@ -155,7 +168,6 @@ Channel.prototype.handleMessage = function (message) {
 
   for (var i in chan.commands) { cmd = chan.commands[i];
     if (message.text.match(cmd.route)) {
-        cmd.args = cmd.args || [];
         // Parse arguments `!help lol "hello world: "` -> ['lol', 'hello world: ']
         var args = (message.text.match(/([^\s]*"[^"]+"[^\s]*)|([^ ]+)/g) || [])
           .splice(1).map(function (s) { return s.replace(/^"(.+?)"$/, '$1') })
@@ -217,6 +229,7 @@ Channel.prototype.registerCommand = function registerCommand(module, name, comma
   command.route = new RegExp('^\\' + chan.config.commandPrefix + name + '( |$)', 'i');
   command.handler = command.op ? checkOp : handler;
   command.module = module;  // Save reference to parent module.
+  command.args = command.args || [];
   command.name = name;
 
   chan.commands.push(command);

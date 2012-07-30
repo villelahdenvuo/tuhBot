@@ -1,8 +1,10 @@
 'use strict';
 
 var fs = require('fs')
+  , colors = require('colors')
   , stream = require('stream')
-  , jsonstream = require('JSONStream');
+  , jsonstream = require('JSONStream')
+  , inspect = require('util').inspect;
 
 function Log(name, out) {
   var log = this;
@@ -24,6 +26,11 @@ function Log(name, out) {
 
 // Raw write function.
 Log.prototype.write = function(o) {
+
+  // DEBUG PRINTING
+  console.log(inspect(o, false, 5, true));
+  if (o.type === 'exception') { console.log('\n%s\n', o.stack.red); };
+
   if (!this.out.writable) {
     console.log('Log', this.name, 'is not writeable.'); return;
   }
@@ -38,7 +45,7 @@ Log.prototype.debug = function(text, o) {
   var msg = {type: 'debug', level: 0, timestamp: Date.now()};
 
   msg.msg = text;
-  msg.debug = o; // Additional information object
+  msg.details = o; // Additional information object
 
   this.write(msg);
 };

@@ -12,7 +12,6 @@ var Test = {
 
 Test.commands = {
   'test': {
-      command: 'test',
            op: false,
          help: 'Prints out a string from config.',
          args: [{name: 'prefix', description: 'Appends before the message', default: 'Me: '}],

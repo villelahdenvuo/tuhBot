@@ -8,7 +8,7 @@ var Blacklist = {
   description: 'allows ops to blacklist words',
        author: 'Ville "tuhoojabotti" Lahdenvuo',
       contact: 'tuhoojabotti at gmail or IRCNet',
-      version: '1.3',
+      version: '1.4',
          init: loadBlacklist
 };
 
@@ -25,6 +25,7 @@ function loadBlacklist() {
 
 function handler(info, cb) {
   var word = info.args[1];
+  if (word === '<word>' && info.args[0] !== 'ls') { info.args[0] = 'fail'; }
   switch(info.args[0]) {
     case '+':
     case 'add':
@@ -43,6 +44,12 @@ function handler(info, cb) {
         cb('Word removed.');
       } else { cb('Word not found.'); }
     break;
+    case 'ls':
+      cb('Blacklisted words: ' + this.blacklist.get().join(', '));
+    break;
+    case 'fail':
+      cb('Missing word, you need help.');
+    break;
     default: cb('Invalid action.');
   }
   console.dir(this.config);
@@ -51,9 +58,9 @@ function handler(info, cb) {
 Blacklist.commands = {
   'bl': {
            op: true,
-         help: 'Handles the blacklist',
-         args: [{name: 'command', description: 'add, rm'},
-                {name: 'word', description: 'word to manipulate'}],
+         help: 'Handles the blacklist.',
+         args: [{name: 'action', description: 'add, rm, ls'},
+                {name: 'word', description: 'word to manipulate', default: '<word>'}],
       handler: handler,
     formatter: function (i) { return i; }
   }

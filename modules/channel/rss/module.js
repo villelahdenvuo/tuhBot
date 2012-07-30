@@ -3,7 +3,7 @@
 var RSSReader = require('./rss')
   , moment = require('moment')
   , format = require('util').format
-  , shorten = require('../shorturl');
+  , shorten = require('../../common/shorturl');
 
 function each(i, o, c) { if(i) {Object.keys(i).forEach(function (n) { o.call(c, n, i[n]); });} }
 
@@ -68,6 +68,28 @@ function rss_command(info, cb) {
     case 'ls':
       cb({cmd: 'ls', feeds: this.feeds});
     break;
+    case 'stop':
+      var feed = this.feeds[info.args[1]];
+      if (feed) {
+        this.log.debug('Stopping feed', feed.conf);
+        if (feed.reader.stop()){
+          cb('Feed stopped.');
+        } else {
+          cb('Feed already stopped.');
+        }
+      } else { cb('Feed not found.'); }
+    break;
+    case 'start':
+      var feed = this.feeds[info.args[1]];
+      if (feed) {
+        this.log.debug('Stopping feed', feed.conf);
+        if (feed.reader.start()) {
+          cb('Feed started.');
+        } else {
+          cb('Feed already started.');
+        }
+      } else { cb('Feed not found.'); }
+    break;
     default:
       cb('Invalid action.');
   }
@@ -80,6 +102,12 @@ RSS.getHelp = function (command) {
     case 'ls':
       ret = 'Lists all feeds on this channel: "name: url (updateInterval, spamInterval)"';
     break;
+    case 'start':
+      ret = 'Starts the feed.';
+    break;
+    case 'stop':
+      ret = 'Stops the feed.';
+    break;
     case 'help': ret = 'Get help about actions.\n';
     default: ret += 'Available actions: help, ls, rm, add, start, stop';
   }
@@ -91,9 +119,11 @@ function rss_formatter(i) {
 
   switch(i.cmd) {
     case 'ls':
-      return Object.keys(i.feeds).map(function (f) {
-        f = i.feeds[f].conf;
-        return format('%s: %s (%d, %d)', f.name, f.url, f.updateInterval, f.spamInterval);
+      return Object.keys(i.feeds).map(function (name) {
+        var f = i.feeds[name].conf
+          , running = i.feeds[name].reader.running ? 'running' : 'stopped';
+        return format('%s (%s): %s (%d, %d)',
+          f.name, running, f.url, f.updateInterval, f.spamInterval);
       }).join('\n');
     break;
   }

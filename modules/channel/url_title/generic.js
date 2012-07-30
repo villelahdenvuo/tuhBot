@@ -2,7 +2,7 @@
 
 var request = require('request')
   , format = require('util').format
-  , encoder = require('../encoder');
+  , encoder = require('../../common/encoder');
 
 function handler(url, cb) {
   request(url,

@@ -5,6 +5,14 @@ var request = require('request')
   , format = require('util').format
   , c = require('irc').colors.wrap;
 
+var URLSize = {
+         name: 'URLSize',
+  description: 'looks for links in messages and warns about big downloads',
+       author: 'Ville "tuhoojabotti" Lahdenvuo',
+      contact: 'tuhoojabotti at gmail or IRCNet',
+      version: '1.0',
+};
+
 function check(info, cb) {
   var size = this.config.warnSize * 1024 * 1024;
   if (!info.matches) { return; }
@@ -18,14 +26,6 @@ function warn(i) {
   return format('Warning - Size: %s - Type: %s',
     c('light_red', size.toFixed(1) + ' MB'), i['content-type']);
 }
-
-var URLSize = {
-         name: 'URLSize',
-  description: 'looks for links in messages and warns about big downloads',
-       author: 'Ville "tuhoojabotti" Lahdenvuo',
-      contact: 'tuhoojabotti at gmail or IRCNet',
-      version: '0.1',
-};
 
 URLSize.routes = {
   'url': {

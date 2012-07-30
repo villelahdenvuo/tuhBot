@@ -91,7 +91,7 @@ function CoreChannel(core) {
   };
 
   this.allowedEvents = ['join', 'part', '+mode', '-mode', 'invite'];
-  this.modulePath = __dirname + '/core/modules/';
+  this.modulePath = __dirname + '/modules/core/';
   this.isCore = true;
   this.init();
 }
