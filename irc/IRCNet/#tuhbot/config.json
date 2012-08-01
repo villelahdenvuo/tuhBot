@@ -19,7 +19,7 @@
     "blacklist": {},
     "asmtv": {},
     "rss": {
-      "feeds": [{"name":"kpop","prefix":"K-Pop: ","url":"http://www.reddit.com/r/kpop/new.rss?sort=new","updateInterval":300,"spamInterval":3}]
+      "feeds": []
     }
   }
 }

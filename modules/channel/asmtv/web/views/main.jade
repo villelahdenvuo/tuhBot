@@ -24,6 +24,13 @@ html(lang="en")
       nav Welcome #{user.username}! &ndash;
         a(href="logout")  logout
       section#feedback
-        ul
-          each item in feedback
-            li= item
+        h2 Feedback
+        div#feedbackcontainer
+          if feedback.length
+            each f in feedback
+              div(id="#{f.id}")
+                a(href="api/comment/#{f.id}", target="_blank")= f.timestamp + " <" + f.from + "> " + f.text
+                button delete
+            div#nofeedback(style="display: none;") No feedback.
+          else
+            div#nofeedback No feedback.

@@ -48,18 +48,20 @@ WebUI.prototype.initIO = function () {
   app.listen(config.socketPort);
 
   io.sockets.on('connection', function (socket) {
-    console.log('New connection', socket);
-    self.sockets.push(socket);
+    console.log('New connection', socket.id);
     socket.on('disconnect', function () {
-      console.log('Client disconnected.');
-      self.sockets.splice(self.sockets.indexOf(socket), 1);
+      console.log('Client disconnected.', socket.id);
     });
   });
 };
 
 WebUI.prototype.sendFeedback = function (message) {
-  this.sockets.forEach(function (socket) {
-    socket.emit('feedback', message);
+  this.broadcast('feedback', message);
+};
+
+WebUI.prototype.broadcast = function (type, message) {
+  this.io.sockets.clients().forEach(function (socket) {
+    socket.emit(type, message);
   });
 };
 
@@ -128,17 +130,20 @@ WebUI.prototype.index = function (req, res) {
   var self = this;
 
   if (req.isAuthenticated()) {
-    res.render("main", {
+    res.render('main', {
       authenticated: req.isAuthenticated(),
       user: req.user,
       feedback: self.module.context.feedback
     });
-  } else { res.render("main", {authenticated: false}); }
+  } else { res.render('main', {authenticated: false}); }
 };
 
 WebUI.prototype.stop = function () {
   this.listener.close();
-  this.io.close();
+  this.io.sockets.clients().forEach(function (socket) {
+    socket.disconnect();
+  });
+  this.io.server.close();
 };
 
 module.exports = WebUI;

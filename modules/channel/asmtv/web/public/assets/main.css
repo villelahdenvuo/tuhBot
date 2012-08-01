@@ -49,3 +49,36 @@ input[type=submit] {
 input[type=submit]:hover {
   background-color: #555;
 }
+
+section#feedback {
+  color: pink;
+  font-weight: bold;
+  border-radius: 6px;
+  padding: 3px 6px;
+  background-color: #888;
+  overflow: hidden;
+}
+section#feedback h2 {
+  margin-top: 0;
+}
+
+#feedbackcontainer {
+  max-height: 300px;
+  overflow-y: scroll;
+}
+
+#feedback div a {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: pink;
+  text-decoration: none;
+  white-space: nowrap;
+  display: block;
+  width: 94%;
+  float: left;
+}
+
+#feedback button {
+  float: right;
+  height: 20px;
+}

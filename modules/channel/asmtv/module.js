@@ -1,6 +1,8 @@
 'use strict';
 
-var WebUI = require('./webui');
+var WebUI = require('./webui')
+  , moment = require('moment')
+  , guid = require('node-guid');
 
 var AsmTV = {
          name: 'AssemblyTV',
@@ -33,9 +35,12 @@ function uninit_asmtv() {
 */
 
 function feedback_handler(i, o) {
-  var feedback = i.matches[1].trim();
+  i.text = i.matches[1].trim();
+  i.id = guid.new();
+  i.timestamp = moment().format('HH:mm:ss');
+  i.date = moment();
   this.webui.sendFeedback(i);
-  this.feedback.unshift(feedback);
+  this.feedback.unshift(i);
 }
 
 function feedback_formatter() {
@@ -53,9 +58,20 @@ AsmTV.routes = {
 
 AsmTV.events = {
   'pm': {
-         help: 'Anonymous poll input handler',
-      handler: function (i, o) { o({someone: i[1], mode: i[2], somebody: i[3]}); },
-    formatter: function (i) { return i.someone + ' gave +' + i.mode + ' to ' + i.somebody + '.'; }
+         help: 'Detects messages directed to AssemblyTV',
+      handler: function (i, o) {
+        feedback_handler.call(this, {from: i[0], matches: ['', i[1]]});
+      },
+    formatter: function (i) { return ''; }
+  }
+};
+
+AsmTV.intervals = {
+  'feedback': {
+    name: 'feedback interval',
+    interval: 3600000,
+    handler: function (o) { o(); },
+    formatter: function () { return "Lähetä palautetta studioon puhumalla minulle täällä tai queryssä!"; }
   }
 };
 

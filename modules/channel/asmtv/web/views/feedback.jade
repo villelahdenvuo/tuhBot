@@ -1,0 +1,14 @@
+doctype 5
+html(lang="en")
+  head
+    title Comment view
+    link(rel="stylesheet", media="all", href="../../assets/feedback.css")
+  body
+    h1 IRC:ssä sanottua
+    article.comment
+      h1 "#{text}"
+      footer &ndash; #{from},
+        time= date.format(' D.M.YYYY klo HH.mm')
+    footer
+      strong /msg AssemblyTV [viesti]
+      |  @ IRCNet
