@@ -16,9 +16,9 @@ Test.commands = {
          help: 'Prints out a string from config.',
          args: [{name: 'prefix', description: 'Appends before the message', default: 'Me: '}],
       handler: function (i, o) { o({message: this.config.string, prefix: i.args[0] || ''}); },
-    formatter: function (o) { return i.prefix + i.message; }
+    formatter: function (i) { return i.prefix + i.message; }
   }
-}
+};
 
 Test.routes = {
   'smileys': {

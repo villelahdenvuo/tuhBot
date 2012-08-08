@@ -4,7 +4,7 @@ var colors = require('colors')
   , util = require('util')
   , fs = require('fs')
   , cw = require('irc').colors.wrap
-  , log = require('./log');
+  , Log = require('./log');
 
 function each(i, o, c) { if(i) {Object.keys(i).forEach(function (n) { o.call(c, n, i[n]); });} }
 
@@ -13,7 +13,6 @@ function Channel(network, name) {
   chan.allowedEvents = ['join', 'part', '+mode', '-mode', 'pm'];
   chan.path = process.cwd() + '/' + name.toLowerCase() + '/';
   chan.modulePath = __dirname + '/modules/channel/';
-  chan.log = new log(name, chan.path + 'channel.log');
   chan.isCore = false;
   chan.network = network;
   chan.name = name;
@@ -27,6 +26,12 @@ function Channel(network, name) {
 }
 
 Channel.prototype.init = function () {
+  if (!fs.existsSync(this.path)) {
+    fs.mkdirSync(this.path);
+  }
+
+  this.log = new Log(this.name, this.path + 'channel.log');
+
   if (!this.loadConfig()) { return false; }
 
   // Make sure we have log folder.
@@ -41,7 +46,7 @@ Channel.prototype.init = function () {
   if (this.config.operators) {
     this.log.debug('Loading operators', this.config.operators);
     this.operators = this.config.operators.map(function (op) {
-      return new RegExp(op.replace(/[-[\]{}()+?.,\\^$|#\s]/g, "\\$&").replace(/\*/g, '(.*?)'), 'i'); });
+      return new RegExp(op.replace(/[-\[\]{}()+?.\\,\^$|#\s]/g, "\\$&").replace(/\*/g, '(.*?)'), 'i'); });
   }
 
   return true; // Success
@@ -55,6 +60,10 @@ Channel.prototype.initIO = function () {
     chan.saveConfig(cb);
   }
 
+  chan.io.mode = function (modes, targets) {
+    chan.network.send.apply(chan.network, ['MODE', chan.name, modes].concat(targets));
+  };
+  chan.io.part = function (reason) { chan.network.send('PART', chan.name, reason || ''); };
   chan.io.isOP = function (host) { return chan.isOperator(host); };
   chan.io.kick = function (who, reason) { chan.network.send('KICK', chan.name, who, reason); };
   chan.io.save = save;
@@ -71,9 +80,10 @@ Channel.prototype.loadConfig = function () {
 };
 
 Channel.prototype.saveConfig = function(cb) {
-  console.dir(this.config, this.path);
+  //console.dir(this.config, this.path);
+  var confString;
 
-  try { var confString = JSON.stringify(this.config); }
+  try { confString = JSON.stringify(this.config, null, '  '); }
   catch (e) {
     this.log.exception(e, 'Failed to save config.');
     cb(e);
@@ -92,14 +102,14 @@ Channel.prototype.initModules = function () {
   var chan = this;
 
   function initModule(name, config, path, extraIO) {
-    var path = path || chan.modulePath
-      , io = extraIO || chan.io;
+    var mpath = path || chan.modulePath
+      , io = extraIO || chan.io, module;
 
     chan.log.info('Loading module', {name: name, config: config});
 
     try { // Load module or override.
-      var module = chan.modules[name] = chan.overrides[name] ?
-        chan.overrides[name] : require(path + name + '/module');
+      module = chan.modules[name] = chan.overrides[name] ?
+        chan.overrides[name] : require(mpath + name + '/module');
     } catch(e) {
       chan.log.exception(e, 'Loading module failed');
       delete chan.modules[name];
@@ -111,7 +121,7 @@ Channel.prototype.initModules = function () {
     module.context = {
       io: io,
       config: config,
-      log: new log(name, chan.path + 'logs/' + name + '.log')
+      log: new Log(name, chan.path + 'logs/' + name + '.log')
     };
 
     // If the module requires special initialization, let's do it here.
@@ -169,11 +179,13 @@ Channel.prototype.handleMessage = function (message) {
     }
   }
 
+  function quoteFix(s) { return s.replace(/^"(.+?)"$/, '$1'); }
+
   for (var i in chan.commands) { cmd = chan.commands[i];
     if (message.text.match(cmd.route)) {
         // Parse arguments `!help lol "hello world: "` -> ['lol', 'hello world: ']
         var args = (message.text.match(/([^\s]*"[^"]+"[^\s]*)|([^ ]+)/g) || [])
-          .splice(1).map(function (s) { return s.replace(/^"(.+?)"$/, '$1') })
+          .splice(1).map(quoteFix)
         , current = cmd.args[args.length];
 
       if (current && !current.default) { // Missing an argument that doesn't have a default.
@@ -187,14 +199,14 @@ Channel.prototype.handleMessage = function (message) {
         handle(cmd, message);
       }
       return; // Command executed, nothing else to do here.
-    };
+    }
   }
 
   chan.routes.forEach(function (r) {
     if (message.text.match(r.route)) {
       message.matches = message.text.match(r.route);
       handle(r, message);
-    };
+    }
   });
 };
 
@@ -227,7 +239,7 @@ Channel.prototype.registerCommand = function registerCommand(module, name, comma
       console.log('Operator', info.from.green, 'called', name.green);
       handler.call(this, info, cb);
     } else { console.log('Non-Operator', info.from.red, 'tried to call', name.red); }
-  };
+  }
 
   command.route = new RegExp('^\\' + chan.config.commandPrefix + name + '( |$)', 'i');
   command.handler = command.op ? checkOp : handler;
@@ -238,8 +250,8 @@ Channel.prototype.registerCommand = function registerCommand(module, name, comma
   chan.commands.push(command);
 };
 
-Channel.prototype.registerEvent = function registerEvent(module, name, event) {
-  var chan = this, module = module
+Channel.prototype.registerEvent = function registerEvent(mod, name, event) {
+  var chan = this, module = mod
     , handler = !event.op ? event.handler :
   function checkOp() {
     var args = arguments[0];
@@ -269,14 +281,14 @@ Channel.prototype.registerEvent = function registerEvent(module, name, event) {
   // Register listener
   chan.network.on(name, onEvent);
   module.listeners.push([name, onEvent]);
-}
+};
 
 Channel.prototype.registerInterval = function(module, name, intv) {
   var chan = this;
   module.intervalIDs.push(setInterval(function () {
     intv.handler.call(module.context, function (out) {
       chan.say(intv.formatter(out));
-    })
+    });
   }, intv.interval));
 };
 
@@ -289,7 +301,7 @@ Channel.prototype.clear = function() {
   var chan = this;
 
   each(chan.modules, function (name, module) {
-    chan.log.debug('Unloading module', name)
+    chan.log.debug('Unloading module', name);
     if (module.uninit) { module.uninit.call(module); }
     module.listeners.forEach(function (listener) {
       chan.network.removeListener(listener[0], listener[1]);
@@ -306,7 +318,7 @@ Channel.prototype.rehash = function(silent) {
   // Empty require cache, so that we can update modules.
   each(require.cache, function (file, value) {
     delete require.cache[file];
-  })
+  });
   // Reinitialize
   this.init();
   if (!this.isCore && !silent) { this.say('Rehashed modules.'); }

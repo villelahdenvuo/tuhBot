@@ -1,7 +1,6 @@
 {
   "operators": [
-    "tuhoojabotti!*@irkin.tuhoojabotti.com",
-    "Wing!wing@hilla.kapsi.fi"
+    "tuhoojabotti!*@irkin.tuhoojabotti.com"
   ],
   "commandPrefix": "!",
   "colors": true,
@@ -17,9 +16,9 @@
     "poll": {},
     "replace": {},
     "blacklist": {},
-    "asmtv": {},
     "rss": {
       "feeds": []
-    }
+    },
+    "operator": {}
   }
 }

@@ -39,8 +39,8 @@ function help_handler(i, o) {
     });
     reply.type = reply.module ? 'module' : 'no module';
   } else {
-      for (var i = chan.commands.length - 1; i >= 0; i--) {
-        var command = chan.commands[i], args = cmd.args || [];
+      for (var j = chan.commands.length - 1; j >= 0; j--) {
+        var command = chan.commands[j], args = cmd.args || [];
         if (cmd === command.name) {
           reply.command = command;
           break;
@@ -55,7 +55,7 @@ function help_handler(i, o) {
 function help_formatter(i) {
   switch(i.type) {
     case 'commands':
-      return format('Modules loaded: %s\nCommands: %s\nYou can ask about commands or #modules.',
+      return format('Modules: %s\nCommands: %s\nYou can ask help about commands or #modules.',
         i.modules.join(', '), i.commands.join(', '));
     case 'module':
       var contact = i.module.contact ? '\nContact: ' + i.module.contact : '';
@@ -64,11 +64,11 @@ function help_formatter(i) {
     case 'no module':
       return 'No such module loaded in this channel.';
     case 'command':
-      return i.command.help + '\n'
-       + i.command.args.map(function (arg) {
+      return i.command.help + '\n' +
+        i.command.args.map(function (arg) {
           return arg.default ?
             format('  [%s="%s"] - %s\n', c('gray', arg.name), arg.default, arg.description):
-            format('  %s - %s\n', c('gray', arg.name), arg.description) }).join('\n');
+            format('  %s - %s\n', c('gray', arg.name), arg.description); }).join('\n');
     case 'no command':
       return 'No help found, Check http://git.io/tuhbot for more documentation.';
   }

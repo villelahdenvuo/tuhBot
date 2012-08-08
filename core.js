@@ -7,11 +7,11 @@ var fs = require('fs')
   , util = require('util')
   , _ = require('underscore')
   , readline = require('readline')
-  , log = require('./log');
+  , Log = require('./log');
 
 function Core() {
   this.networks = {};
-  this.log = new log('Core', __dirname + '/core.log');
+  this.log = new Log('Core', __dirname + '/core.log');
   this.channel = new CoreChannel(this);
 
   this.loadNetworks();
@@ -23,10 +23,12 @@ Core.prototype.loadNetworks = function () {
   networks.forEach(this.initNetwork, this);
 };
 
-Core.prototype.initNetwork = function (id) {
+Core.prototype.initNetwork = function(id) {
   var core = this;
-  core.networks[id] = cp.fork(__dirname + '/network.js', [id], {'cwd': __dirname + '/irc/' + id});
-  core.networks[id].on('message', function (msg) {
+  core.networks[id] = cp.fork(__dirname + '/network.js', [id], {
+    'cwd': __dirname + '/irc/' + id
+  });
+  core.networks[id].on('message', function(msg) {
     core.networkMessage(id, msg);
   });
 };
@@ -42,11 +44,11 @@ Core.prototype.networkMessage = function (network, msg) {
     this.emit.apply(this, a);
   }
 
-  if (msg.type == 'message' || msg.type == 'message#') {
+  if (msg.type === 'message' || msg.type === 'message#') {
     core.log.msg(network, msg);
     var reply = function reply(message) {
       core.say(network, msg.args[1], message);
-    }
+    };
     this.channel.handleMessage.call(this.channel,
       {net: network, from: msg.args[0], channel: msg.args[1], text: msg.args[2], raw: msg.args[3],
        reply: reply});
@@ -65,14 +67,14 @@ Core.prototype.exit = function (message) {
       message: (message || core.channel.config.quitMessage || "http://git.io/tuhbot")
     });
   });
-}
+};
 
 Core.prototype.exitCallback = function (networkId) {
   delete this.networks[networkId];
   if (Object.keys(this.networks).length < 1) {
     process.exit();
   }
-}
+};
 
 Core.prototype.say = function (net, to, msg) {
   // Tell network to send a message
@@ -84,8 +86,12 @@ function CoreChannel(core) {
   Channel.call(this, core, 'core');
 
   this.io = {
-    send: function (net, args) {
-      core.networks[net].send({type: 'command', args: args}); },
+    send: function(net, args) {
+      core.networks[net].send({
+        type: 'command',
+        args: args
+      });
+    },
     core: this.network,
     channel: this
   };
@@ -108,7 +114,7 @@ process.on('uncaughtException', function (err) {
 
 var rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 var sigintsReceived = 0;
-rl.on('SIGINT', function () {
+rl.on('SIGINT', function() {
   sigintsReceived++;
   console.log('Core received SIGINT'.yellow);
   if (sigintsReceived === 1) {
