@@ -5,6 +5,7 @@ node_modules/*
 
 # Allow custom node-irc
 !node_modules/irc/
+!node_modules/irc
 
 
 #################
