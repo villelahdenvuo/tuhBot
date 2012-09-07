@@ -12,6 +12,7 @@
     "url": "https://github.com/tuhoojabotti/tuhBot.git"
   },
   "keywords": ["irc", "bot", "best"],
+  "main": "./core.js",
   "dependencies": {
     "colors": "*",
     "async": ">=0.1.20",
