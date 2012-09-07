@@ -1,6 +1,8 @@
 {
   "operators": [
-    "tuhoojabotti!*@irkin.tuhoojabotti.com"
+    "tuhoojabotti!*@irkin.tuhoojabotti.com",
+    "VesaLa*!laaksov2@*.org.aalto.fi",
+    "VesQ*!vesq@viuhka.fi"
   ],
   "commandPrefix": "!",
   "colors": true,
